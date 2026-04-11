@@ -1,77 +1,64 @@
-# Edge AI Energy GAN
+# Which Neural Networks Waste the Most Energy?
 
-Measured-aware synthetic data pipeline for **10,000 inference energy
-measurements** across 6 edge hardware platforms and 5 neural network
-architectures.
+Code and paper artifacts for the study:
 
-The current GAN trains on combo-normalized residuals instead of raw physical
-values. That change prevents the mode collapse seen in the earlier raw-scale
-WGAN-GP setup.
+*Which Neural Networks Waste the Most Energy? A Study of Edge AI Inference with Paper-Aligned Synthetic Trial Modeling*
 
-Based on: *"Which Neural Networks Waste the Most Energy? A Study of Edge AI Inference"*
-(Aryan Shah, Texas Academy of Mathematics and Science / UNT)
+This repository contains:
+- the tabular WGAN-GP code used for synthetic inference-trial generation
+- the Apple-Silicon paper-aligned benchmark inputs
+- evaluation scripts for fidelity and ranking preservation
+- the revised LaTeX manuscript and supporting appendix/CSV artifacts
 
----
+## Repo Layout
 
-## Design Decisions
-
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| Noise σ | 5% of mean | Matches powermetrics measurement variance from paper |
-| Trials per combo | 100 | 30 combos × 100 = 3,000 seed rows — enough for stable GAN training |
-| Target samples | 10,000 | ~333 per combo — statistically sufficient for correlation analysis |
-| Architecture | WGAN-GP + spectral norm | Prevents mode collapse on small tabular datasets |
-| n_critic | 5 | Standard WGAN-GP; prevents discriminator overfitting |
-| Latent dim | 64 | Sufficient capacity for 4-dimensional output |
-
----
-
-## Files
-
-```
-edge_ai_gan/
-├── gan_model.py      # Generator, Discriminator, gradient penalty
-├── data_utils.py     # Seed data generation, DataScaler, EnergyDataset
-├── train.py          # WGAN-GP training loop with checkpointing
-├── generate.py       # Load trained G → produce 10,000 samples → CSV
-├── evaluate.py       # Wasserstein, KS test, coverage, correlation metrics
-├── requirements.txt
+```text
+GAN/
+├── train.py
+├── generate.py
+├── evaluate.py
+├── gan_model.py
+├── data_utils.py
+├── paper_revised_latex.tex
+├── paper_apple_silicon_benchmark.csv
+├── paper_alignment_comparison.csv
+├── paper_alignment_power_std_comparison.csv
+├── paper_supplemental_metrics.csv
+├── PAPER_DATA_APPENDIX.md
 └── README.md
 ```
 
----
-
-## Quick Start
+## Environment
 
 ```bash
-# 1. Install dependencies
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+```
 
-# 2. Train the GAN  (~5 min CPU / ~1 min GPU)
+## Two Workflows
+
+### 1. General Residual GAN
+
+This is the broader multi-device tabular GAN workflow.
+
+```bash
 python train.py --epochs 2000
-
-# 3. Generate 10,000 samples with the residualized GAN
 python generate.py --n_samples 10000 --output edge_ai_synthetic_10k.csv
-
-# 4. Optional: compare against the grounded bootstrap baseline
-python generate.py --method bootstrap \
-  --output edge_ai_synthetic_10k_bootstrap.csv
-
-# 5. Evaluate fidelity
 python evaluate.py --csv edge_ai_synthetic_10k.csv
 ```
 
-## Recommended Use
+### 2. Paper-Aligned Apple-Silicon Workflow
 
-- Use `python generate.py` for the current residualized GAN.
-- Use `python generate.py --method bootstrap ...` as a grounded baseline.
-- Keep checking the GAN against `evaluate.py` whenever the benchmark file
-  changes materially.
+This is the workflow that matches the revised manuscript.
 
-## Paper-Aligned Workflow
+Key points:
+- train only on the Apple-Silicon benchmark rows used by the paper
+- treat `energy_J` and `latency_ms` as the modeled quantities
+- derive `power_W` from energy and latency
+- report repeated-trial `energy_std` only after within-model variance calibration
 
-To match `main.pdf` as closely as possible, use the Apple-Silicon-only benchmark
-file and restrict generation to observed combos:
+Recommended commands:
 
 ```bash
 python train.py \
@@ -80,54 +67,62 @@ python train.py \
   --observed_only
 
 python generate.py \
+  --checkpoint checkpoints_paper_apple_20260410/generator_final.pt \
   --data_csv paper_apple_silicon_benchmark.csv \
   --devices apple_silicon \
   --observed_only \
-  --output paper_apple_silicon_synth_10k.csv
+  --match_seed_variance \
+  --derive_power \
+  --recompute_energy_std \
+  --n_samples 10000 \
+  --output paper_apple_silicon_synth_10k_fixed.csv
+
+python evaluate.py \
+  --csv paper_apple_silicon_synth_10k_fixed.csv \
+  --data_csv paper_apple_silicon_benchmark.csv \
+  --devices apple_silicon \
+  --observed_only \
+  --feature_mode paper_aligned
 ```
 
----
+## Current Paper-Aligned Results
 
-## Device Profiles
+These are the current calibrated paper-aligned evaluation results from
+`paper_apple_silicon_synth_10k_fixed.csv`.
 
-| Device | TDP (W) | Energy scale | Latency scale | Tier |
-|--------|---------|-------------|---------------|------|
-| Apple Silicon (paper baseline) | 5.3 | 1.0× | 1.0× | Mobile laptop |
-| Raspberry Pi 4 | 3.4 | 2.1× | 3.8× | SBC |
-| Jetson Nano | 5.0 | 1.6× | 2.2× | Edge GPU |
-| Coral Edge TPU | 2.0 | 0.3× | 0.4× | Accelerator |
-| STM32 MCU | 0.05 | 0.8× | 45× | Microcontroller |
-| Snapdragon 888 | 4.5 | 0.85× | 0.7× | Mobile SoC |
+- `energy_J`: Wasserstein `0.003939`, KS `0.0636`, `p=0.1561`
+- `latency_ms`: Wasserstein `0.693447`, KS `0.0669`, `p=0.1195`
+- derived `power_W`: Wasserstein `0.045739`, KS `0.0465`, `p=0.4984`
+- repeated-trial `energy_std`: matched after calibration
+- energy coverage: `100%`
+- ranking preserved: `mobilenetv3_small < mobilenetv2 < resnet18 < tiny_vit_5m < efficientnet_b0`
 
-Scales are relative to the Apple Silicon baseline from the paper.
+## Main Files
 
----
+- `train.py`: WGAN-GP training loop with conditional generation by device/model
+- `generate.py`: GAN sampling, postprocessing, and variance calibration
+- `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
+- `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
+- `paper_revised_latex.tex`: revised manuscript
 
-## Output CSV Schema
+## Paper-Specific Artifacts
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `device` | str | Device key |
-| `device_tier` | str | Hardware category |
-| `model` | str | Model key |
-| `arch` | str | Architecture type |
-| `params_M` | float | Parameter count (millions) |
-| `flops_G` | float | GFLOPs |
-| `energy_J` | float | Energy per inference (Joules) |
-| `power_W` | float | Average power draw (Watts) |
-| `latency_ms` | float | Inference latency (ms) |
-| `energy_std` | float | Std dev of energy across trials |
-| `energy_scale_vs_paper` | float | Ratio to paper's Apple Silicon measurement |
-| `device_idx` | int | Integer device encoding |
-| `model_idx` | int | Integer model encoding |
+- `paper_apple_silicon_benchmark.csv`: Apple-Silicon benchmark rows aligned to the paper
+- `paper_apple_silicon_synth_10k_fixed.csv`: calibrated synthetic dataset used by the revised manuscript
+- `paper_alignment_comparison.csv`: measured vs synthetic means
+- `paper_alignment_power_std_comparison.csv`: derived power and calibrated spread comparison
+- `paper_supplemental_metrics.csv`: paper-safe derived/support values
+- `PAPER_DATA_APPENDIX.md`: explanation of what is measured, derived, and synthetic
 
----
+## Important Interpretation Notes
 
-## Next Steps (Future Work from Paper)
+- Mean energy and latency come from the paper's Apple-Silicon benchmark.
+- Model-specific power values are derived from `energy_J * 1000 / latency_ms`.
+- Trial-spread values are synthetic support estimates, not direct measurements.
+- The paper-aligned evaluation should use `--feature_mode paper_aligned` in `evaluate.py`.
 
-1. **Real validation** — run powermetrics / powertop on each physical device and
-   compare against generated distributions using evaluate.py
-2. **Quantization study** — add int8/fp16 variants as separate model entries
-3. **Expanded architectures** — MobileViT, EfficientFormer, MCUNet
-4. **Regression model** — train a lightweight predictor from architecture
-   descriptors (FLOPs, params, arch type) to energy using this synthetic dataset
+## Status
+
+The repository is set up as the companion codebase for the paper and is pushed to:
+
+`https://github.com/jubs-2431/which-neural-networks-waste-the-most-energy`

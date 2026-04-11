@@ -55,14 +55,16 @@ separate source.
 The paper text states that repeated trials were run, but Table 3 does not
 publish per-model standard deviations. To support repeated-trial style analysis,
 the paper-aligned GAN was trained on the Apple-Silicon-only benchmark and used
-to generate repeated synthetic samples.
+to generate repeated synthetic samples. In the final repo workflow, the
+generated within-model variance is then calibrated to match the grounded
+Apple-only seed distribution before reporting `energy_std`.
 
 The resulting per-model synthetic `energy_std` values are:
-- `mobilenetv3_small`: `0.003867 J`
-- `mobilenetv2`: `0.007057 J`
-- `resnet18`: `0.006286 J`
-- `tiny_vit_5m`: `0.014270 J`
-- `efficientnet_b0`: `0.016949 J`
+- `mobilenetv3_small`: `0.004455 J`
+- `mobilenetv2`: `0.008113 J`
+- `resnet18`: `0.007263 J`
+- `tiny_vit_5m`: `0.016725 J`
+- `efficientnet_b0`: `0.020086 J`
 
 These should be described as synthetic repeated-trial spread estimates, not as
 directly measured statistics from the paper.
@@ -87,6 +89,6 @@ If you add this to the paper, the safest framing is:
 - Mean energy and latency are directly reported from the Apple-Silicon
   experiments in Table 3.
 - Average power can be derived from the reported energy and latency values.
-- Trial-to-trial spread estimates were generated using a paper-aligned synthetic
-  model and should be treated as synthetic support data rather than direct
-  measurements.
+- Trial-to-trial spread estimates were generated using a calibrated
+  paper-aligned synthetic model and should be treated as synthetic support data
+  rather than direct measurements.
