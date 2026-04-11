@@ -1,0 +1,22 @@
+source,device,hw_name,model,latency_ms,power_W,notes,energy_J
+coral_known,coral_tpu,Coral Edge TPU,mobilenetv2,2.4,2.0,coral.ai/docs MobileNetV2 INT8,0.0048
+coral_known,coral_tpu,Coral Edge TPU,mobilenetv3_small,3.1,2.0,coral.ai/docs MobileNetV3,0.0062
+coral_known,coral_tpu,Coral Edge TPU,efficientnet_b0,4.7,2.0,coral.ai/docs EfficientNet-Lite,0.0094
+banbury2022_mlsys,raspberry_pi4,raspberry_pi4,mobilenetv2,78.5,3.2,,0.2512
+banbury2022_mlsys,raspberry_pi4,raspberry_pi4,mobilenetv3_small,55.3,3.1,,0.17143
+banbury2022_mlsys,raspberry_pi4,raspberry_pi4,resnet18,198.4,3.6,,0.71424
+banbury2022_mlsys,raspberry_pi4,raspberry_pi4,efficientnet_b0,312.0,3.5,,1.092
+nvidia_jetson_benchmarks,jetson_nano,jetson_nano,mobilenetv2,44.1,4.8,,0.21168
+nvidia_jetson_benchmarks,jetson_nano,jetson_nano,mobilenetv3_small,38.7,4.6,,0.17802
+nvidia_jetson_benchmarks,jetson_nano,jetson_nano,resnet18,46.2,5.1,,0.23562
+nvidia_jetson_benchmarks,jetson_nano,jetson_nano,efficientnet_b0,89.0,4.9,,0.4361
+coral_ai_docs,coral_tpu,coral_tpu,mobilenetv2,2.4,2.0,,0.0048
+coral_ai_docs,coral_tpu,coral_tpu,mobilenetv3_small,3.1,2.0,,0.0062
+coral_ai_docs,coral_tpu,coral_tpu,efficientnet_b0,4.7,2.0,,0.0094
+mlperf_tiny_v0.5_ref,stm32,stm32,resnet18,920.0,0.048,,0.04416
+mlperf_tiny_v0.5_ref,stm32,stm32,mobilenetv2,540.0,0.045,,0.0243
+shah2024_paper,apple_silicon,apple_silicon,mobilenetv3_small,15.14,5.3,,0.08
+shah2024_paper,apple_silicon,apple_silicon,mobilenetv2,20.07,5.3,,0.106
+shah2024_paper,apple_silicon,apple_silicon,resnet18,20.68,5.3,,0.11
+shah2024_paper,apple_silicon,apple_silicon,tiny_vit_5m,41.33,5.3,,0.219
+shah2024_paper,apple_silicon,apple_silicon,efficientnet_b0,55.08,5.3,,0.292

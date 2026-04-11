@@ -1,0 +1,49 @@
+Edge AI Energy Scraper Report
+Generated: 2026-04-09T16:47:27.231240
+
+── Source status ──
+OK mlcommons/tiny_results_v0.5: 0 result files
+OK mlcommons/tiny_results_v1.0: 0 result files
+OK mlcommons/tiny_results_v1.1: 0 result files
+OK mlcommons/tiny_results_v1.2: 0 result files
+OK mlcommons/tiny_results_v1.3: 0 result files
+OK papers_with_code: 0 rows
+OK coral: 3 rows
+OK known_values: 18 rows
+
+Total rows : 21
+Devices    : ['apple_silicon', 'coral_tpu', 'jetson_nano', 'raspberry_pi4', 'stm32']
+Models     : ['efficientnet_b0', 'mobilenetv2', 'mobilenetv3_small', 'resnet18', 'tiny_vit_5m']
+
+── Coverage ──
+model          efficientnet_b0  mobilenetv2  mobilenetv3_small  resnet18  tiny_vit_5m
+device                                                                               
+apple_silicon                1            1                  1         1            1
+coral_tpu                    2            2                  2         0            0
+jetson_nano                  1            1                  1         1            0
+raspberry_pi4                1            1                  1         1            0
+stm32                        0            1                  0         1            0
+
+── Sample rows ──
+       device             model  latency_ms  energy_J  power_W                   source
+    coral_tpu       mobilenetv2        2.40   0.00480    2.000              coral_known
+    coral_tpu mobilenetv3_small        3.10   0.00620    2.000              coral_known
+    coral_tpu   efficientnet_b0        4.70   0.00940    2.000              coral_known
+raspberry_pi4       mobilenetv2       78.50   0.25120    3.200        banbury2022_mlsys
+raspberry_pi4 mobilenetv3_small       55.30   0.17143    3.100        banbury2022_mlsys
+raspberry_pi4          resnet18      198.40   0.71424    3.600        banbury2022_mlsys
+raspberry_pi4   efficientnet_b0      312.00   1.09200    3.500        banbury2022_mlsys
+  jetson_nano       mobilenetv2       44.10   0.21168    4.800 nvidia_jetson_benchmarks
+  jetson_nano mobilenetv3_small       38.70   0.17802    4.600 nvidia_jetson_benchmarks
+  jetson_nano          resnet18       46.20   0.23562    5.100 nvidia_jetson_benchmarks
+  jetson_nano   efficientnet_b0       89.00   0.43610    4.900 nvidia_jetson_benchmarks
+    coral_tpu       mobilenetv2        2.40   0.00480    2.000            coral_ai_docs
+    coral_tpu mobilenetv3_small        3.10   0.00620    2.000            coral_ai_docs
+    coral_tpu   efficientnet_b0        4.70   0.00940    2.000            coral_ai_docs
+        stm32          resnet18      920.00   0.04416    0.048     mlperf_tiny_v0.5_ref
+        stm32       mobilenetv2      540.00   0.02430    0.045     mlperf_tiny_v0.5_ref
+apple_silicon mobilenetv3_small       15.14   0.08000    5.300           shah2024_paper
+apple_silicon       mobilenetv2       20.07   0.10600    5.300           shah2024_paper
+apple_silicon          resnet18       20.68   0.11000    5.300           shah2024_paper
+apple_silicon       tiny_vit_5m       41.33   0.21900    5.300           shah2024_paper
+apple_silicon   efficientnet_b0       55.08   0.29200    5.300           shah2024_paper

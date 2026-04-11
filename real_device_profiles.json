@@ -1,0 +1,169 @@
+{
+  "generated_from": "ingest_real_data.py",
+  "source": "scraped real benchmark data",
+  "note": "Loaded by data_utils.py \u2014 overrides estimated DEVICE_PROFILES",
+  "profiles": {
+    "coral_tpu": {
+      "energy_scale_mean": 0.0517,
+      "latency_scale_mean": 0.1366,
+      "tdp_W": 2.0,
+      "per_model": {
+        "mobilenetv3_small": {
+          "energy_scale": 0.0775,
+          "energy_J_mean": 0.0062,
+          "energy_J_std": 0.0,
+          "n_energy": 2,
+          "latency_scale": 0.2048,
+          "latency_ms_mean": 3.1,
+          "n_latency": 2,
+          "tdp_W": 2.0
+        },
+        "mobilenetv2": {
+          "energy_scale": 0.0453,
+          "energy_J_mean": 0.0048,
+          "energy_J_std": 0.0,
+          "n_energy": 2,
+          "latency_scale": 0.1196,
+          "latency_ms_mean": 2.4,
+          "n_latency": 2,
+          "tdp_W": 2.0
+        },
+        "efficientnet_b0": {
+          "energy_scale": 0.0322,
+          "energy_J_mean": 0.0094,
+          "energy_J_std": 0.0,
+          "n_energy": 2,
+          "latency_scale": 0.0853,
+          "latency_ms_mean": 4.7,
+          "n_latency": 2,
+          "tdp_W": 2.0
+        }
+      },
+      "n_models_with_data": 3
+    },
+    "raspberry_pi4": {
+      "energy_scale_mean": 3.6864,
+      "latency_scale_mean": 5.7056,
+      "tdp_W": 3.35,
+      "per_model": {
+        "mobilenetv3_small": {
+          "energy_scale": 2.1429,
+          "energy_J_mean": 0.17143,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 3.6526,
+          "latency_ms_mean": 55.3,
+          "n_latency": 1,
+          "tdp_W": 3.1
+        },
+        "mobilenetv2": {
+          "energy_scale": 2.3698,
+          "energy_J_mean": 0.2512,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 3.9113,
+          "latency_ms_mean": 78.5,
+          "n_latency": 1,
+          "tdp_W": 3.2
+        },
+        "resnet18": {
+          "energy_scale": 6.4931,
+          "energy_J_mean": 0.71424,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 9.5938,
+          "latency_ms_mean": 198.4,
+          "n_latency": 1,
+          "tdp_W": 3.6
+        },
+        "efficientnet_b0": {
+          "energy_scale": 3.7397,
+          "energy_J_mean": 1.092,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 5.6645,
+          "latency_ms_mean": 312.0,
+          "n_latency": 1,
+          "tdp_W": 3.5
+        }
+      },
+      "n_models_with_data": 4
+    },
+    "jetson_nano": {
+      "energy_scale_mean": 1.9644,
+      "latency_scale_mean": 2.1508,
+      "tdp_W": 4.85,
+      "per_model": {
+        "mobilenetv3_small": {
+          "energy_scale": 2.2252,
+          "energy_J_mean": 0.17802,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 2.5561,
+          "latency_ms_mean": 38.7,
+          "n_latency": 1,
+          "tdp_W": 4.6
+        },
+        "mobilenetv2": {
+          "energy_scale": 1.997,
+          "energy_J_mean": 0.21168,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 2.1973,
+          "latency_ms_mean": 44.1,
+          "n_latency": 1,
+          "tdp_W": 4.8
+        },
+        "resnet18": {
+          "energy_scale": 2.142,
+          "energy_J_mean": 0.23562,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 2.234,
+          "latency_ms_mean": 46.2,
+          "n_latency": 1,
+          "tdp_W": 5.1
+        },
+        "efficientnet_b0": {
+          "energy_scale": 1.4935,
+          "energy_J_mean": 0.4361,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 1.6158,
+          "latency_ms_mean": 89.0,
+          "n_latency": 1,
+          "tdp_W": 4.9
+        }
+      },
+      "n_models_with_data": 4
+    },
+    "stm32": {
+      "energy_scale_mean": 0.3154,
+      "latency_scale_mean": 35.6966,
+      "tdp_W": 0.046,
+      "per_model": {
+        "mobilenetv2": {
+          "energy_scale": 0.2292,
+          "energy_J_mean": 0.0243,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 26.9058,
+          "latency_ms_mean": 540.0,
+          "n_latency": 1,
+          "tdp_W": 0.045
+        },
+        "resnet18": {
+          "energy_scale": 0.4015,
+          "energy_J_mean": 0.04416,
+          "energy_J_std": 0.0,
+          "n_energy": 1,
+          "latency_scale": 44.4874,
+          "latency_ms_mean": 920.0,
+          "n_latency": 1,
+          "tdp_W": 0.048
+        }
+      },
+      "n_models_with_data": 2
+    }
+  }
+}
