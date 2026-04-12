@@ -1,6 +1,7 @@
 # GAN for Weaker Engines
 
-This folder contains a separate workflow for non-Apple hardware baselines.
+This folder contains a separate workflow for selected non-Apple weaker-engine
+latency baselines.
 
 Design choices:
 - uses a real-world latency baseline CSV built from official docs, benchmark
@@ -10,6 +11,9 @@ Design choices:
 - treats power and energy as optional support metadata rather than forcing
   fabricated labels where the source data does not provide them
 - trains a combo-conditioned latency GAN with post-generation moment calibration
+- keeps only the better-grounded weaker-engine targets in the final baseline:
+  `coral_devboard_edgetpu`, `coral_usb_accelerator`,
+  `raspberry_pi4_cpu`, and `snapdragon888_nnapi`
 
 ## Files
 
@@ -19,12 +23,15 @@ Design choices:
 - `train.py`
 - `generate.py`
 - `evaluate.py`
+- `checkpoints_abs/`
+- `weaker_engine_synth_10k.csv`
+- `weaker_engine_synth_10k.eval.txt`
 
 ## Run
 
 ```bash
-python train.py --epochs 400 --checkpoint_dir checkpoints
-python generate.py --checkpoint checkpoints/generator_final.pt --output weaker_engine_synth_10k.csv
+python train.py --epochs 400 --checkpoint_dir checkpoints_abs
+python generate.py --checkpoint checkpoints_abs/generator_final.pt --output weaker_engine_synth_10k.csv
 python evaluate.py --csv weaker_engine_synth_10k.csv
 ```
 
