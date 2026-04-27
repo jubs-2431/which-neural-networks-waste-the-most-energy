@@ -1,5 +1,4 @@
 \documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
@@ -18,19 +17,24 @@
 \pgfplotsset{compat=1.18}
 \sisetup{round-mode=places,round-precision=3}
 
-\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
-    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
-
 \begin{document}
 
 \title{Latency, Not FLOPs, Predicts Inference Energy on Apple Silicon: \\
 A Five-Architecture Benchmark with Residualized GAN Trial Modeling}
 
-\author{\IEEEauthorblockN{Aryan Shah}
+\author{
+\IEEEauthorblockN{Aryan Shah}
 \IEEEauthorblockA{\textit{Texas Academy of Mathematics and Science} \\
 \textit{University of North Texas}\\
 Denton, TX, USA \\
-aryanshah.2431@gmail.com}}
+aryanshah.2431@gmail.com}
+\and
+\IEEEauthorblockN{Romir Kadiam}
+\IEEEauthorblockA{\textit{Texas Academy of Mathematics and Science} \\
+\textit{University of North Texas}\\
+Denton, TX, USA \\
+romirkadiam123@gmail.com}
+}
 
 \maketitle
 
@@ -265,9 +269,9 @@ small-sample WGAN from shrinking repeated-trial spread.
 
 \subsection{Code and Data Availability}
 The benchmark scripts, the paper-aligned synthetic dataset, GAN configuration,
-random seeds, and exact PyTorch and torchvision versions are available from
-the author upon request. A public repository is planned at camera-ready.
-Reproducibility details are provided in Appendix~\ref{sec:appendix}.
+random seeds, and exact PyTorch and torchvision versions are available in the
+accompanying public repository. Reproducibility details are provided in
+Appendix~\ref{sec:appendix}.
 
 \section{Results}
 
@@ -631,7 +635,7 @@ by this rescaling.
 \subsection{Random Seeds and Software Versions}
 Exact PyTorch and torchvision versions, NumPy and SciPy versions, random
 seeds for both benchmark and GAN, and the precise window sizes used for energy
-attribution are logged in the accompanying repository at camera-ready.
+attribution are logged in the accompanying repository.
 
 \begin{thebibliography}{16}
 
