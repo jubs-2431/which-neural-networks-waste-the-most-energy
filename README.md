@@ -19,7 +19,8 @@ GAN/
 ├── evaluate.py
 ├── gan_model.py
 ├── data_utils.py
-├── paper_revised_latex.tex
+├── paper_apple_silicon_only.tex
+├── paper_apple_silicon_only.pdf
 ├── paper_apple_silicon_benchmark.csv
 ├── paper_alignment_comparison.csv
 ├── paper_alignment_power_std_comparison.csv
@@ -103,7 +104,8 @@ These are the current calibrated paper-aligned evaluation results from
 - `generate.py`: GAN sampling, postprocessing, and variance calibration
 - `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
-- `paper_revised_latex.tex`: revised manuscript
+- `paper_apple_silicon_only.tex`: revised Apple-Silicon-only manuscript source
+- `paper_apple_silicon_only.pdf`: compiled manuscript PDF
 
 ## Paper-Specific Artifacts
 
