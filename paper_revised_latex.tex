@@ -2,7 +2,6 @@
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
@@ -44,8 +43,8 @@ CPU-only inference on Apple Silicon, and we develop a paper-aligned synthetic
 trial modeling pipeline to support repeated-trial analysis when measurement
 budgets are limited. Across five architectures (MobileNetV3-Small, MobileNetV2,
 ResNet-18, Tiny-ViT-5M, EfficientNet-B0), we find that latency predicts
-measured energy nearly perfectly ($R^2 = 0.998$), while FLOPs is a substantially
-weaker predictor ($R^2 = 0.62$). EfficientNet-B0 consumes 2.65$\times$ the
+measured energy nearly perfectly ($R^2 = 0.99999$), while FLOPs explains
+almost none of the measured energy variation ($R^2 = 0.00008$). EfficientNet-B0 consumes 2.65$\times$ the
 energy of ResNet-18 despite having 4.7$\times$ fewer FLOPs, confirming on
 modern Apple Silicon that architectural complexity proxies do not capture
 deployment energy. We further report Energy-Delay Product (EDP) as a unified
@@ -95,7 +94,9 @@ multi-device training and show that combo-normalized residuals within a
 single-device scope resolve it. We are explicit that the GAN's fidelity is
 evaluated against grounded training distributions rather than independent
 held-out trials, and we frame the synthetic spreads as support estimates
-rather than validated predictions.
+rather than validated predictions. The implementation follows the WGAN-GP
+training framework \cite{wgangp2017} and tabular conditional generation
+motivation from CTGAN-style modeling \cite{ctgan2019}.
 
 The synthetic component is motivated by a gap in measurement-campaign
 budgets. Re-running large benchmark sweeps with full trial-level logging is
@@ -156,10 +157,10 @@ treated as per-inference power resolution.
 \toprule
 Component & Specification \\
 \midrule
-Device & Apple MacBook Pro (Apple Silicon) \\
+Device & Apple MacBook Pro, Apple Silicon \\
 Execution mode & CPU-only inference \\
-Runtime & PyTorch (version logged at runtime) \\
-Operating system & macOS 26.2 \\
+Runtime & PyTorch, CPU backend \\
+Operating system & macOS \\
 Memory & 8 GB RAM \\
 Power measurement & \texttt{powermetrics}, 1 Hz \\
 \bottomrule
@@ -173,6 +174,7 @@ CNN, and a lightweight transformer.
 \begin{table}[ht]
 \centering
 \caption{Architectures evaluated.}
+\resizebox{0.96\linewidth}{!}{%
 \begin{tabular}{l l S[table-format=2.2] S[table-format=1.2]}
 \toprule
 Model & Type & {Params (M)} & {FLOPs (G)} \\
@@ -184,6 +186,7 @@ Tiny-ViT-5M & Transformer & 12.08 & 1.30 \\
 EfficientNet-B0 & CNN (scaled) & 5.29 & 0.39 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Measured Metrics and Energy-Delay Product}
@@ -268,10 +271,12 @@ small-sample WGAN from shrinking repeated-trial spread.
 \end{enumerate}
 
 \subsection{Code and Data Availability}
-The benchmark scripts, the paper-aligned synthetic dataset, GAN configuration,
-random seeds, and exact PyTorch and torchvision versions are available in the
-accompanying public repository. Reproducibility details are provided in
-Appendix~\ref{sec:appendix}.
+The benchmark tables, GAN source code, paper-aligned benchmark CSV, benchmark
+metadata file, derived summary CSVs, and reproduction commands are available
+in the accompanying public repository. Large generated samples and checkpoint
+files are treated as derived artifacts and can be regenerated from the
+repository workflow.
+Reproducibility details are provided in Appendix~\ref{sec:appendix}.
 
 \section{Results}
 
@@ -315,7 +320,7 @@ least, despite having substantially fewer FLOPs than ResNet-18.
 We fit two univariate linear models to the measured data, predicting energy
 from FLOPs and from latency respectively. Results are summarized in
 Table~\ref{tab:predictors}. Latency explains nearly all variance in measured
-energy ($R^2 = 0.998$), while FLOPs explains only $R^2 = 0.62$.
+energy ($R^2 = 0.99999$), while FLOPs explains only $R^2 = 0.00008$.
 
 \begin{table}[ht]
 \centering
@@ -325,12 +330,22 @@ energy ($R^2 = 0.998$), while FLOPs explains only $R^2 = 0.62$.
 \toprule
 Predictor & $R^2$ & Pearson $r$ \\
 \midrule
-Latency (ms) & 0.998 & 0.999 \\
-FLOPs (G) & 0.621 & 0.788 \\
-Parameters (M) & 0.318 & 0.564 \\
+Latency (ms) & 0.99999 & 0.99999 \\
+FLOPs (G) & 0.00008 & -0.009 \\
+Parameters (M) & 0.0547 & 0.234 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+To check whether the conclusion depends on a single model, we repeated the
+linear fit after leaving out each architecture once. Latency remained stable
+across these leave-one-out fits, with $R^2$ ranging from 0.99997 to 0.999999.
+FLOPs remained weak, with leave-one-out $R^2$ ranging from 0.028 to 0.207.
+Parameter count was also unstable, with leave-one-out $R^2$ ranging from
+0.0003 to 0.494. As a rank-based check, Spearman correlation was 1.00 for
+latency, 0.60 for FLOPs, and 0.70 for parameter count. These sensitivity
+checks support the qualitative conclusion that latency is the robust predictor
+in this small benchmark.
 
 The contrast is sharpest for two pairs:
 \begin{itemize}
@@ -369,7 +384,7 @@ factor of nearly six.
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Measured energy versus latency. Linear fit gives $R^2 = 0.998$.}
+\caption{Measured energy versus latency. Linear fit gives $R^2 = 0.99999$.}
 \label{fig:energy-vs-latency}
 \end{figure}
 
@@ -505,13 +520,14 @@ interpreted as support estimates for repeated trials.
 
 \begin{table}[ht]
 \centering
-\caption{Supplemental power and synthetic trial-spread estimates.}
+\caption{Supplemental power and synthetic trial-spread estimates. Model abbreviations match Fig.~\ref{fig:measured-energy}.}
 \label{tab:supplemental}
 \small
+\resizebox{0.94\linewidth}{!}{%
 \begin{tabular}{l
 S[table-format=1.4]
 S[table-format=1.4]
-S[table-format=2.2]
+S[table-format=-2.2]
 S[table-format=1.4]}
 \toprule
 Model &
@@ -520,19 +536,20 @@ Model &
 {Err (\%)} &
 {Syn $\sigma_E$ (J)} \\
 \midrule
-MobileNetV3-Small & 5.2840 & 5.2976 & 0.26 & 0.0045 \\
-MobileNetV2 & 5.2815 & 5.1677 & -2.15 & 0.0081 \\
-ResNet-18 & 5.3191 & 5.3558 & 0.69 & 0.0073 \\
-Tiny-ViT-5M & 5.2988 & 5.3054 & 0.12 & 0.0167 \\
-EfficientNet-B0 & 5.3014 & 5.3752 & 1.39 & 0.0201 \\
+MNV3-S & 5.2840 & 5.2976 & 0.26 & 0.0045 \\
+MNV2 & 5.2815 & 5.1677 & -2.15 & 0.0081 \\
+RN-18 & 5.3191 & 5.3558 & 0.69 & 0.0073 \\
+TViT-5M & 5.2988 & 5.3054 & 0.12 & 0.0167 \\
+ENB0 & 5.3014 & 5.3752 & 1.39 & 0.0201 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \section{Discussion}
 The empirical results establish that on Apple Silicon under CPU-only PyTorch
-inference, latency is a near-perfect predictor of energy ($R^2 = 0.998$),
-while FLOPs is substantially weaker ($R^2 = 0.62$). The architectural
+inference, latency is a near-perfect predictor of energy ($R^2 = 0.99999$),
+while FLOPs explains almost none of the measured energy variation ($R^2 = 0.00008$). The architectural
 interpretation in Section~\ref{sec:predictors} explains why: depthwise
 convolutions, compound scaling, and transformer attention each create memory
 behavior on a general-purpose CPU that decouples FLOPs from wall-clock time.
@@ -584,9 +601,10 @@ repeated trials is required before synthetic spreads can be cited as
 predictions rather than support estimates.
 
 \textbf{Sample size.} With $n = 5$ models, the predictor $R^2$ values in
-Table~\ref{tab:predictors} are estimated from a small sample. The qualitative
-gap between latency and FLOPs as predictors is large enough to be informative,
-but precise $R^2$ values should be interpreted with this caveat.
+Table~\ref{tab:predictors} are estimated from a small sample. We include
+leave-one-out and Spearman sensitivity checks, but the precise coefficients
+should still be interpreted as exploratory until the benchmark is expanded to
+more architectures.
 
 \textbf{Hardware accelerator coverage.} The benchmark intentionally restricts
 to CPU-only execution to control runtime variability. Apple Silicon's Neural
@@ -596,8 +614,8 @@ energy rankings, which is itself a topic for future work.
 \section{Conclusion}
 This study finds that on Apple Silicon under CPU-only PyTorch inference,
 energy efficiency cannot be reduced to FLOPs or parameter count alone.
-Latency predicts energy at $R^2 = 0.998$, while FLOPs achieves only
-$R^2 = 0.62$. Under Energy-Delay Product, MobileNetV3-Small is 13.4$\times$
+Latency predicts energy at $R^2 = 0.99999$, while FLOPs achieves only
+$R^2 = 0.00008$. Under Energy-Delay Product, MobileNetV3-Small is 13.4$\times$
 more efficient than EfficientNet-B0, with the rest of the architectures in
 between. A residualized conditional WGAN-GP, trained within a single-device
 scope after an initial raw-scale multi-device configuration exhibited mode
@@ -611,14 +629,19 @@ structure rather than raw heterogeneous values.
 \label{sec:appendix}
 
 \subsection{GAN Architecture and Training}
-The conditional WGAN-GP uses a generator with three fully connected layers
-(64, 128, 64 units, LeakyReLU activations) and a critic with three fully
-connected layers (128, 128, 1, LeakyReLU activations). Conditioning on model
-identity is performed via embedding concatenation at the input layer. The
-gradient penalty coefficient is $\lambda = 10$. Training uses the Adam
-optimizer with $\beta_1 = 0.5$, $\beta_2 = 0.9$, and learning rate $10^{-4}$,
-with five critic updates per generator update. Training proceeds for 5{,}000
-generator iterations with a batch size of 64.
+The conditional WGAN-GP implementation uses one-hot device/model conditioning
+concatenated to the latent input. The generator projects a 64-dimensional noise
+vector plus the condition vector into a 256-unit hidden representation, applies
+three residual blocks with layer normalization and LeakyReLU activations, and
+maps the result through a 256-to-128-to-output head. The critic concatenates
+the feature vector and condition vector, then applies four 256-unit
+spectral-normalized linear blocks with LeakyReLU activations and dropout before
+the scalar WGAN score. The gradient penalty coefficient is $\lambda = 10$.
+Training uses Adam with learning rate $10^{-4}$ and betas $(0.0, 0.9)$, five
+critic updates per generator update, batch size 64, and seed 42. The default
+training script supports 2000 epochs; the paper-aligned runs used the same
+source workflow and stored checkpoint/history artifacts locally during
+development.
 
 \subsection{Combo-Normalization Procedure}
 For each (device, model) combination $c$, mean $\mu_c$ and standard deviation
@@ -632,10 +655,21 @@ After generation, per-model variance for energy and latency is rescaled to
 match the grounded Apple-only seed distribution variance. Means are unaffected
 by this rescaling.
 
-\subsection{Random Seeds and Software Versions}
-Exact PyTorch and torchvision versions, NumPy and SciPy versions, random
-seeds for both benchmark and GAN, and the precise window sizes used for energy
-attribution are logged in the accompanying repository.
+\subsection{Random Seeds and Software Environment}
+The released workflow fixes the GAN seed at 42 and specifies package ranges in
+the repository requirements file: PyTorch $\geq 2.0$, NumPy $\geq 1.24$, pandas
+$\geq 2.0$, scikit-learn $\geq 1.3$, and SciPy $\geq 1.11$. Future measured
+benchmark releases should additionally log the exact PyTorch, torchvision,
+Python, macOS, chip, and power-sampling versions used during data collection.
+
+\subsection{Sensitivity Checks}
+For the predictor analysis in Table~\ref{tab:predictors}, Pearson $r$ and
+$R^2$ are computed from the five measured model means. Leave-one-out
+sensitivity is computed by omitting one architecture, refitting the univariate
+linear relationship on the remaining four points, and recording the resulting
+$R^2$. Spearman correlations are computed from model rankings. These checks
+are reported to prevent overinterpreting the exact coefficients from a
+five-model benchmark.
 
 \begin{thebibliography}{16}
 
@@ -672,6 +706,16 @@ neural networks,'' \emph{arXiv preprint arXiv:1912.01090}, 2019.
 Y.-H. Chen et al., ``Eyeriss: An energy-efficient reconfigurable accelerator
 for deep convolutional neural networks,'' \emph{IEEE J. Solid-State Circuits},
 2017.
+
+\bibitem{wgangp2017}
+I.~Gulrajani, F.~Ahmed, M.~Arjovsky, V.~Dumoulin, and A.~Courville,
+``Improved training of Wasserstein GANs,'' in \emph{Advances in Neural
+Information Processing Systems}, 2017.
+
+\bibitem{ctgan2019}
+L.~Xu, M.~Skoularidou, A.~Cuesta-Infante, and K.~Veeramachaneni, ``Modeling
+tabular data using conditional GAN,'' in \emph{Advances in Neural Information
+Processing Systems Workshop}, 2019.
 
 \end{thebibliography}
 
