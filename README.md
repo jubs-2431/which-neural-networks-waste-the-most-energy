@@ -20,6 +20,7 @@ GAN/
 ├── gan_model.py
 ├── data_utils.py
 ├── paper_revised_latex.tex
+├── paper_revised_latex.pdf
 ├── benchmark_metadata.json
 ├── paper_apple_silicon_benchmark.csv
 ├── paper_alignment_comparison.csv
@@ -105,6 +106,7 @@ These are the current calibrated paper-aligned evaluation results from
 - `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
 - `paper_revised_latex.tex`: canonical IEEE-style revised manuscript
+- `paper_revised_latex.pdf`: compiled manuscript PDF
 - `benchmark_metadata.json`: machine-readable benchmark scope, workflow defaults, and robustness checks
 
 ## Paper-Specific Artifacts
