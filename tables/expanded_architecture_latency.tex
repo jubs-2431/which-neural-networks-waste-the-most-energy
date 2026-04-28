@@ -1,0 +1,32 @@
+\begin{table}[ht]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Expanded local CPU benchmark over 17 self-contained PyTorch architecture variants. Latency values are direct repeated measurements on the machine documented in \texttt{measurement\_environment.json}; energy and EDP are not directly measured for this sweep.}
+\label{tab:expanded-architecture-latency}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{l l r r r r}
+\toprule
+Architecture & Family & {Params (M)} & {MACs (G)} & {Latency ms, mean $\pm$ std} & {P95 ms} \\
+\midrule
+global\_avg\_mlp\_tiny & MLP & 0.065 & 0.000 & $0.026 \pm 0.001$ & 0.027 \\
+patch\_mixer\_small & Mixer & 0.224 & 0.021 & $0.464 \pm 0.029$ & 0.509 \\
+patch\_mixer\_medium & Mixer & 0.435 & 0.051 & $0.808 \pm 0.037$ & 0.872 \\
+cnn\_tiny\_2conv & Plain CNN & 0.038 & 0.020 & $0.813 \pm 0.067$ & 0.891 \\
+cnn\_small\_4conv & Plain CNN & 0.112 & 0.085 & $1.312 \pm 0.037$ & 1.381 \\
+depthwise\_small & Depthwise CNN & 0.053 & 0.012 & $1.439 \pm 0.044$ & 1.520 \\
+grouped\_conv\_cnn & Grouped CNN & 0.154 & 0.086 & $1.825 \pm 0.054$ & 1.878 \\
+cnn\_medium\_6conv & Plain CNN & 0.482 & 0.373 & $2.428 \pm 0.069$ & 2.561 \\
+attention\_gate\_cnn & Attention CNN & 0.179 & 0.263 & $2.438 \pm 0.058$ & 2.540 \\
+depthwise\_medium & Depthwise CNN & 0.112 & 0.025 & $2.639 \pm 2.019$ & 5.091 \\
+squeeze\_expand\_cnn & Squeeze CNN & 0.173 & 0.298 & $3.115 \pm 0.066$ & 3.254 \\
+residual\_cnn\_small & Residual CNN & 0.177 & 0.531 & $3.241 \pm 0.067$ & 3.316 \\
+inverted\_residual\_small & Inverted residual & 0.080 & 0.140 & $3.389 \pm 0.087$ & 3.536 \\
+bottleneck\_residual & Bottleneck CNN & 0.227 & 0.362 & $3.462 \pm 0.068$ & 3.590 \\
+residual\_cnn\_medium & Residual CNN & 0.514 & 1.707 & $6.451 \pm 0.135$ & 6.682 \\
+inverted\_residual\_wide & Inverted residual & 0.167 & 0.406 & $6.710 \pm 0.110$ & 6.848 \\
+convnext\_micro & ConvNeXt-like & 0.240 & 0.224 & $7.617 \pm 0.146$ & 7.815 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}

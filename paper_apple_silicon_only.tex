@@ -38,13 +38,17 @@ Tiny-ViT-5M, and EfficientNet-B0 are evaluated using the same runtime, input
 shape, and measurement procedure. The central result is that architecture-level
 complexity proxies such as FLOPs and parameter count do not fully explain
 measured energy use on this platform, while latency tracks energy closely. To
-support repeated-trial analysis, the paper adds a strictly Apple-Silicon-only
-synthetic trial model based on a residualized conditional WGAN-GP. Under the
-paper-aligned evaluation protocol, the synthetic model reproduces the measured
-energy ranking exactly, matches the grounded energy and latency distributions,
-and preserves derived power after calibration. The synthetic component is used
-only as supplemental support for the measured Apple-Silicon study, not as a
-replacement for direct hardware measurements.
+strengthen the engineering evidence, this release also includes a separate
+17-architecture local CPU latency sweep with 30 measured trials per architecture,
+exact machine metadata, parameter counts, model size, MACs, FLOPs, and proxy
+EDP columns. To support repeated-trial analysis of the original energy table,
+the paper adds a strictly Apple-Silicon-only synthetic trial model based on a
+residualized conditional WGAN-GP. Under the paper-aligned evaluation protocol,
+the synthetic model reproduces the measured energy ranking exactly, matches the
+grounded energy and latency distributions, and preserves derived power after
+calibration. The synthetic component is used only as supplemental support for
+the measured Apple-Silicon study, not as a replacement for direct hardware
+measurements.
 \end{abstract}
 
 \section{Introduction}
@@ -132,6 +136,26 @@ EfficientNet-B0 & CNN (scaled) & 5.29 & 0.39 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Expanded Local Architecture Sweep}
+In addition to the five directly energy-measured models, the repository now
+contains a broader local CPU latency sweep over 17 self-contained PyTorch
+architecture variants. This sweep was added to make the architectural comparison
+less dependent on a five-row table and to report real repeated-trial variation.
+Each architecture was run with input shape $1 \times 3 \times 224 \times 224$,
+10 warm-up iterations, and 30 measured CPU-only float32 inference trials. The
+benchmark script records the exact environment in
+\texttt{measurement\_environment.json}; for the run reported here, the machine
+was a MacBook Pro with an Apple M4 Pro, 24 GB RAM, macOS 26.2, Python 3.9.6,
+and PyTorch 2.8.0, with \texttt{torch.set\_num\_threads(1)}.
+
+This expanded sweep directly measures latency, not energy. The accompanying
+\texttt{paper\_baseline\_comparison.csv} file includes parameters, model size,
+MACs, FLOPs, latency statistics, throughput, and a clearly labeled constant-power
+energy-delay proxy. The proxy assumes \SI{5.3}{W} only for normalized comparison
+and is not treated as a direct \texttt{powermetrics} energy measurement.
+
+\input{tables/expanded_architecture_latency}
 
 \subsection{Measured Metrics}
 The original paper reports energy per inference, average power, and latency per
@@ -430,6 +454,14 @@ benchmark identifies the most and least energy-efficient architectures in this
 measured CPU-only setting, and it shows that common architectural proxies do
 not fully explain the observed ordering.
 
+The expanded 17-architecture sweep supports the same caution from a different
+angle. It shows that parameter count, MACs, and FLOPs provide useful baselines,
+but they still do not fully determine measured latency. For example, several
+low-MAC depthwise or inverted-residual variants are slower than denser CNN or
+mixer variants on this CPU-only PyTorch stack. Because the expanded sweep is
+latency-only, it should be used as a reliability and baseline-comparison
+artifact rather than as direct energy evidence.
+
 Within that narrower scope, the synthetic component becomes easier to justify.
 The revised GAN preserves the measured model ranking and reproduces mean energy
 and latency closely, which makes it useful for supplemental repeated-trial
@@ -464,13 +496,14 @@ the tightly controlled Apple-Silicon benchmark used here.
 
 Three directions would strengthen this Apple-Silicon study further:
 \begin{enumerate}
-\item publish measured standard deviations for energy and latency directly from
-the repeated Apple-Silicon runs;
+\item publish measured standard deviations for energy directly from repeated
+Apple-Silicon \texttt{powermetrics} runs matching the expanded 17-architecture
+latency protocol;
 \item save higher-resolution power traces per model so model-specific power
 distributions can be analyzed directly rather than derived; and
-\item extend the same benchmarking philosophy into a separate weaker-engine
-paper that reports the already-developed non-Apple latency GAN results while
-adding more directly measured baselines and harmonized runtime constraints.
+\item extend the same benchmarking philosophy into a separate weaker-engine paper
+that reports the already-developed non-Apple latency GAN results while adding
+more directly measured baselines and harmonized runtime constraints.
 \end{enumerate}
 
 \section{Conclusion}
