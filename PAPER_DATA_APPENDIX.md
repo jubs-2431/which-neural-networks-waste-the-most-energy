@@ -69,6 +69,48 @@ The resulting per-model synthetic `energy_std` values are:
 These should be described as synthetic repeated-trial spread estimates, not as
 directly measured statistics from the paper.
 
+## Expanded Direct Latency Measurements
+
+Files:
+- `/Users/aryanshah/Downloads/GAN/measured_architecture_benchmark.csv`
+- `/Users/aryanshah/Downloads/GAN/measured_architecture_trials.csv`
+- `/Users/aryanshah/Downloads/GAN/measurement_environment.json`
+- `/Users/aryanshah/Downloads/GAN/paper_baseline_comparison.csv`
+
+These files were added after the original five-model Apple-Silicon energy table
+to strengthen the architecture-level baseline evidence.
+
+What is directly measured:
+- 17 self-contained PyTorch architecture variants.
+- 30 measured CPU-only latency trials per architecture after 10 warm-up runs.
+- Input shape `1 x 3 x 224 x 224`.
+- Float32 inference under `torch.inference_mode()`.
+- Single PyTorch CPU thread via `torch.set_num_threads(1)`.
+
+Measurement environment:
+- MacBook Pro, Apple M4 Pro.
+- 24 GB RAM.
+- macOS 26.2.
+- Python 3.9.6.
+- PyTorch 2.8.0.
+- Full metadata is in `measurement_environment.json`.
+
+Baseline metrics added:
+- Parameter count.
+- FP32 model size.
+- MACs.
+- FLOPs.
+- Latency mean, standard deviation, median, and p95.
+- Throughput.
+- Constant-power energy and EDP proxy columns.
+
+Important limitation:
+- The expanded architecture sweep directly measures latency only.
+- The columns named `energy_proxy_J_constant_power` and
+  `edp_proxy_J_s_constant_power` assume a constant `5.3 W` reference power.
+- These proxy values are useful for normalized comparison but are not direct
+  `powermetrics` energy measurements.
+
 ## Online Source Check
 
 I also checked for public Apple-Silicon model-specific inference-power sources
@@ -92,3 +134,6 @@ If you add this to the paper, the safest framing is:
 - Trial-to-trial spread estimates were generated using a calibrated
   paper-aligned synthetic model and should be treated as synthetic support data
   rather than direct measurements.
+- The expanded 17-architecture sweep adds real repeated latency trials and
+  stronger architecture baselines, but its energy/EDP fields are proxy values
+  unless matching power traces are collected.

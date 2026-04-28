@@ -19,12 +19,20 @@ GAN/
 ├── evaluate.py
 ├── gan_model.py
 ├── data_utils.py
-├── paper_revised_latex.tex
+├── paper_apple_silicon_only.tex
+├── paper_apple_silicon_only.pdf
 ├── paper_apple_silicon_benchmark.csv
 ├── paper_alignment_comparison.csv
 ├── paper_alignment_power_std_comparison.csv
 ├── paper_supplemental_metrics.csv
+├── measured_architecture_benchmark.csv
+├── measured_architecture_trials.csv
+├── measurement_environment.json
+├── paper_baseline_comparison.csv
+├── MEASUREMENT_PROTOCOL.md
+├── RELEASE_MANIFEST.md
 ├── PAPER_DATA_APPENDIX.md
+├── scripts/benchmark_architectures.py
 └── README.md
 ```
 
@@ -97,13 +105,40 @@ These are the current calibrated paper-aligned evaluation results from
 - energy coverage: `100%`
 - ranking preserved: `mobilenetv3_small < mobilenetv2 < resnet18 < tiny_vit_5m < efficientnet_b0`
 
+## Expanded Measured Architecture Sweep
+
+The repo now includes a separate local repeated-trial latency benchmark over 17
+self-contained PyTorch architecture variants. This improves the baseline
+comparison without pretending that latency-only measurements are direct energy
+measurements.
+
+Run:
+
+```bash
+.venv/bin/python scripts/benchmark_architectures.py --trials 30 --warmup 10 --threads 1
+```
+
+Outputs:
+
+- `measured_architecture_benchmark.csv`: 17 architectures with measured latency mean/std/p50/p95, params, model size, MACs, FLOPs, throughput, and clearly labeled proxy energy/EDP columns.
+- `measured_architecture_trials.csv`: 510 raw measured latency trials.
+- `measurement_environment.json`: exact measurement-machine metadata.
+- `paper_baseline_comparison.csv`: latency-ranked baseline comparison for the paper.
+
+Interpretation:
+
+- Latency statistics are direct measurements.
+- Energy/EDP columns in the expanded sweep are constant-power proxies and must not be described as direct `powermetrics` measurements.
+
 ## Main Files
 
 - `train.py`: WGAN-GP training loop with conditional generation by device/model
 - `generate.py`: GAN sampling, postprocessing, and variance calibration
 - `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
-- `paper_revised_latex.tex`: revised manuscript
+- `scripts/benchmark_architectures.py`: repeatable local benchmark for the expanded measured architecture sweep
+- `paper_apple_silicon_only.tex`: revised Apple-Silicon-only manuscript source
+- `paper_apple_silicon_only.pdf`: compiled manuscript PDF
 
 ## Paper-Specific Artifacts
 
@@ -112,6 +147,12 @@ These are the current calibrated paper-aligned evaluation results from
 - `paper_alignment_comparison.csv`: measured vs synthetic means
 - `paper_alignment_power_std_comparison.csv`: derived power and calibrated spread comparison
 - `paper_supplemental_metrics.csv`: paper-safe derived/support values
+- `measured_architecture_benchmark.csv`: expanded direct latency measurements over 17 local architectures
+- `measured_architecture_trials.csv`: raw trial-level latency measurements
+- `measurement_environment.json`: measurement machine metadata
+- `paper_baseline_comparison.csv`: FLOPs/params/model-size/latency/proxy-EDP comparison table
+- `MEASUREMENT_PROTOCOL.md`: what is measured versus derived/proxy
+- `RELEASE_MANIFEST.md`: files that should be present on `main` for release
 - `PAPER_DATA_APPENDIX.md`: explanation of what is measured, derived, and synthetic
 
 ## Important Interpretation Notes
@@ -119,6 +160,8 @@ These are the current calibrated paper-aligned evaluation results from
 - Mean energy and latency come from the paper's Apple-Silicon benchmark.
 - Model-specific power values are derived from `energy_J * 1000 / latency_ms`.
 - Trial-spread values are synthetic support estimates, not direct measurements.
+- Expanded architecture latency mean/std values are direct local measurements.
+- Expanded architecture energy/EDP values are labeled constant-power proxies, not direct energy measurements.
 - The paper-aligned evaluation should use `--feature_mode paper_aligned` in `evaluate.py`.
 
 ## Status
