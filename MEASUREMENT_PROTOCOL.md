@@ -37,4 +37,41 @@ Outputs:
 
 ## Direct Energy Extension
 
-To turn the expanded sweep into direct energy evidence, run the benchmark while collecting synchronized `powermetrics` traces for each architecture. Add the resulting per-trial power traces and integrated energy values as new measured columns rather than replacing the current latency-only sweep.
+This release includes a direct repeated `powermetrics` audit for the five paper
+models under `measured_energy_powermetrics/`. To reproduce or extend it, run:
+
+```bash
+python3 scripts/measure_energy_powermetrics.py \
+  --windows 10 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 10 \
+  --cooldown-seconds 10 \
+  --threads 1
+```
+
+This script prompts for `sudo` because macOS requires superuser privileges for
+`powermetrics`. It writes:
+
+- `measured_energy_powermetrics/measured_energy_trials.csv`: one row per
+  measured model/window with measured power, latency, inference count, and
+  per-inference energy.
+- `measured_energy_powermetrics/measured_energy_summary.csv`: per-model
+  measured mean, standard deviation, SEM, 95% CI, and window count.
+- `measured_energy_powermetrics/measurement_environment_energy.json`: exact
+  chip, macOS, Python, PyTorch, torchvision, timm, thread count, warmups,
+  cooldown, randomized order seed, and `powermetrics` command template.
+- `measured_energy_powermetrics/raw_powermetrics/`: raw text logs, one file per
+  model/window.
+
+The script uses CPU-only float32 inference, randomized model order across
+repeats, a fixed input shape of `1 x 3 x 224 x 224`, and
+`powermetrics --samplers cpu_power,gpu_power,ane_power`.
+
+The included audit used 10 windows per model, 20 seconds per window, 20
+`powermetrics` samples per window at 1 Hz, 10 warm-up inferences before each
+window, 10 seconds of cooldown between windows, and one PyTorch CPU thread.
+It was collected on the local Apple M1 MacBook Pro recorded in
+`measured_energy_powermetrics/measurement_environment_energy.json`; it is a
+new reproducibility audit and should not be presented as the missing original
+raw windows behind `paper_apple_silicon_benchmark.csv`.

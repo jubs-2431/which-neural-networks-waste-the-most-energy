@@ -1,0 +1,70 @@
+{
+  "cooldown_seconds": 10.0,
+  "device": "cpu",
+  "dtype": "float32",
+  "git_branch": "main",
+  "git_commit": "08024c4941f4374a3e8254f8a164901c477a2ce6",
+  "git_dirty": true,
+  "hardware_profile": {
+    "Chip": "Apple M1",
+    "Memory": "8 GB",
+    "Model Identifier": "MacBookPro17,1",
+    "Model Name": "MacBook Pro",
+    "Model Number": "MYD82HN/A",
+    "OS Loader Version": "13822.81.10",
+    "System Firmware Version": "13822.81.10",
+    "Total Number of Cores": "8 (4 Performance and 4 Efficiency)"
+  },
+  "input_shape": [
+    1,
+    3,
+    224,
+    224
+  ],
+  "machine": "arm64",
+  "models": [
+    "mobilenetv3_small",
+    "mobilenetv2",
+    "resnet18",
+    "tiny_vit_5m",
+    "efficientnet_b0"
+  ],
+  "os_profile": {
+    "BuildVersion": "25D125",
+    "ProductName": "macOS",
+    "ProductVersion": "26.3"
+  },
+  "platform": "macOS-26.3-arm64-arm-64bit",
+  "powermetrics_command_template": [
+    "sudo",
+    "powermetrics",
+    "--samplers",
+    "cpu_power,gpu_power,ane_power",
+    "-i",
+    "1000",
+    "-n",
+    "20",
+    "-f",
+    "text",
+    "-o",
+    "<raw_log_path>"
+  ],
+  "powermetrics_note": "Run by subprocess as sudo; raw text logs are stored under raw_powermetrics.",
+  "processor": "arm",
+  "python_version": "3.12.1 (v3.12.1:2305ca5144, Dec  7 2023, 17:23:38) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "random_seed": 20260430,
+  "randomized_order": true,
+  "release": "25.3.0",
+  "sample_interval_ms": 1000,
+  "system": "Darwin",
+  "timestamp_utc": "2026-04-30T05:07:52.017230+00:00",
+  "timm_version": "1.0.24",
+  "torch_num_interop_threads": 1,
+  "torch_num_threads": 1,
+  "torch_version": "2.3.1",
+  "torchvision_version": "0.18.1",
+  "uname": "Darwin Romirs-MacBook-Pro-2905.local 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:53:01 PST 2026; root:xnu-12377.81.4~5/RELEASE_ARM64_T8103 arm64",
+  "warmups": 10,
+  "window_seconds": 20.0,
+  "windows_per_model": 10
+}

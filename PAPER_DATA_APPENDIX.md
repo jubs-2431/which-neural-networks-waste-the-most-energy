@@ -137,3 +137,34 @@ If you add this to the paper, the safest framing is:
 - The expanded 17-architecture sweep adds real repeated latency trials and
   stronger architecture baselines, but its energy/EDP fields are proxy values
   unless matching power traces are collected.
+
+## Direct Repeated Energy Audit Added in This Release
+
+Files:
+- `measured_energy_powermetrics/measured_energy_trials.csv`
+- `measured_energy_powermetrics/measured_energy_summary.csv`
+- `measured_energy_powermetrics/measurement_environment_energy.json`
+- `measured_energy_powermetrics/raw_powermetrics/`
+
+What is directly measured:
+- The same five architecture definitions used by the paper.
+- 10 repeated energy windows per model, 50 windows total.
+- 20 seconds per window with `powermetrics` sampled at 1 Hz.
+- CPU-only float32 PyTorch inference with one PyTorch CPU thread.
+- 10 warm-up inferences before each window and 10 seconds cooldown between windows.
+- Randomized model order within each repeat using seed `20260430`.
+
+Measurement environment:
+- MacBook Pro, Apple M1, 8 GB RAM.
+- macOS 26.3 build 25D125.
+- Python 3.12.1.
+- PyTorch 2.3.1, torchvision 0.18.1, timm 1.0.24.
+- Full metadata and the `powermetrics` command template are in
+  `measured_energy_powermetrics/measurement_environment_energy.json`.
+
+Important limitation:
+- This is a new local reproducibility audit. It provides real trial-level
+  energy statistics and raw power logs, but it should not be described as the
+  missing original raw windows behind `paper_apple_silicon_benchmark.csv`.
+- One Tiny-ViT window is a high-power outlier. It remains in the released CSV
+  and summary; no outlier filtering was applied.

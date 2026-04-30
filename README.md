@@ -7,6 +7,7 @@ Code and paper artifacts for the study:
 This repository contains:
 - the tabular WGAN-GP code used for synthetic inference-trial generation
 - the Apple-Silicon paper-aligned benchmark inputs
+- direct repeated `powermetrics` energy-window artifacts for the five paper models
 - evaluation scripts for fidelity and ranking preservation
 - the revised LaTeX manuscript and supporting appendix/CSV artifacts
 
@@ -29,11 +30,13 @@ GAN/
 ├── measured_architecture_benchmark.csv
 ├── measured_architecture_trials.csv
 ├── measurement_environment.json
+├── measured_energy_powermetrics/
 ├── paper_baseline_comparison.csv
 ├── MEASUREMENT_PROTOCOL.md
 ├── RELEASE_MANIFEST.md
 ├── PAPER_DATA_APPENDIX.md
 ├── scripts/benchmark_architectures.py
+├── scripts/measure_energy_powermetrics.py
 └── README.md
 ```
 
@@ -131,6 +134,39 @@ Interpretation:
 - Latency statistics are direct measurements.
 - Energy/EDP columns in the expanded sweep are constant-power proxies and must not be described as direct `powermetrics` measurements.
 
+## Direct Repeated Energy Measurement
+
+The repo includes a direct repeated `powermetrics` audit under
+`measured_energy_powermetrics/`. To reproduce or extend those trial-level
+energy artifacts, run the workflow from a local terminal:
+
+```bash
+python3 scripts/measure_energy_powermetrics.py \
+  --windows 10 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 10 \
+  --cooldown-seconds 10 \
+  --threads 1
+```
+
+macOS will ask for your admin password because `powermetrics` requires
+superuser privileges. The script writes:
+
+- `measured_energy_powermetrics/measured_energy_trials.csv`: one measured
+  energy row per model/window.
+- `measured_energy_powermetrics/measured_energy_summary.csv`: measured
+  per-model mean, standard deviation, SEM, 95% CI, and window count.
+- `measured_energy_powermetrics/measurement_environment_energy.json`: exact
+  hardware, software, thread, warmup, cooldown, randomized-order, and
+  `powermetrics` command metadata.
+- `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` logs.
+
+The included audit has 50 measured windows: 10 windows per model across the
+five paper architectures. One Tiny-ViT window is a high-power outlier; it is
+kept in the CSV and summary rather than filtered so the reported standard
+deviation and 95% CI remain auditable.
+
 ## Main Files
 
 - `train.py`: WGAN-GP training loop with conditional generation by device/model
@@ -138,6 +174,7 @@ Interpretation:
 - `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
 - `scripts/benchmark_architectures.py`: repeatable local benchmark for the expanded measured architecture sweep
+- `scripts/measure_energy_powermetrics.py`: repeatable five-model direct energy-window benchmark using `powermetrics`
 - `paper_revised_latex_all_fixes.tex`: final IEEE-style manuscript source
 - `paper_revised_latex_all_fixes.pdf`: compiled manuscript PDF
 - `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks
@@ -153,6 +190,10 @@ Interpretation:
 - `measured_architecture_trials.csv`: raw trial-level latency measurements
 - `measurement_environment.json`: measurement machine metadata
 - `paper_baseline_comparison.csv`: FLOPs/params/model-size/latency/proxy-EDP comparison table
+- `measured_energy_powermetrics/measured_energy_trials.csv`: 50 direct repeated `powermetrics` energy windows.
+- `measured_energy_powermetrics/measured_energy_summary.csv`: measured per-model mean, std, SEM, 95% CI, window count, latency, and power summaries.
+- `measured_energy_powermetrics/measurement_environment_energy.json`: exact environment and protocol metadata for the direct energy audit.
+- `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` text logs, one per measured window.
 - `benchmark_metadata_all_fixes.json`: benchmark and predictor-check metadata for the final paper
 - `MEASUREMENT_PROTOCOL.md`: what is measured versus derived/proxy
 - `RELEASE_MANIFEST.md`: files that should be present on `main` for release
@@ -165,6 +206,7 @@ Interpretation:
 - Trial-spread values are synthetic support estimates, not direct measurements.
 - Expanded architecture latency mean/std values are direct local measurements.
 - Expanded architecture energy/EDP values are labeled constant-power proxies, not direct energy measurements.
+- Direct repeated energy stats are included under `measured_energy_powermetrics/`; rerunning `scripts/measure_energy_powermetrics.py` requires local admin privileges.
 - The paper-aligned evaluation should use `--feature_mode paper_aligned` in `evaluate.py`.
 
 ## Status
