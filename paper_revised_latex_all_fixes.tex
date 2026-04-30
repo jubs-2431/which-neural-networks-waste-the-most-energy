@@ -18,8 +18,8 @@
 
 \begin{document}
 
-\title{Latency, Not FLOPs, Predicts Inference Energy on Apple Silicon: \\
-A Five-Architecture Benchmark with Residualized GAN Trial Modeling}
+\title{Inference Energy Tracks Latency Rather Than FLOPs on Apple Silicon: \\
+A Five-Architecture Benchmark with Exploratory Residualized GAN Modeling}
 
 \author{
 \IEEEauthorblockN{Aryan Shah}
@@ -38,28 +38,33 @@ romirkadiam123@gmail.com}
 \maketitle
 
 \begin{abstract}
-We study which neural network architectures waste the most energy during
-CPU-only inference on Apple Silicon, and we develop a paper-aligned synthetic
-trial modeling pipeline to support repeated-trial analysis when measurement
-budgets are limited. Across five architectures (MobileNetV3-Small, MobileNetV2,
-ResNet-18, Tiny-ViT-5M, EfficientNet-B0), we find that latency predicts
-measured energy nearly perfectly ($R^2 = 0.99999$), while FLOPs explains
-almost none of the measured energy variation ($R^2 = 0.00008$). EfficientNet-B0 consumes 2.65$\times$ the
-energy of ResNet-18 despite having 4.7$\times$ fewer FLOPs, confirming on
-modern Apple Silicon that architectural complexity proxies do not capture
-deployment energy. We further report Energy-Delay Product (EDP) as a unified
-efficiency metric, under which MobileNetV3-Small is 13.4$\times$ more efficient
-than EfficientNet-B0. To support repeated-trial analysis without re-running the
-full benchmark, we develop a residualized conditional WGAN-GP. An initial
+We study per-inference energy for neural network architectures during CPU-only
+inference on Apple Silicon, and we develop a paper-aligned synthetic trial
+modeling pipeline to support repeated-trial analysis when measurement budgets
+are limited. Across five architectures (MobileNetV3-Small, MobileNetV2,
+ResNet-18, Tiny-ViT-5M, EfficientNet-B0), we find that, in this five-model
+benchmark, latency is strongly associated with measured energy
+($R^2 = 0.99999$), while FLOPs explains almost none of the measured energy
+variation ($R^2 = 0.00008$). EfficientNet-B0 consumes 2.65$\times$ the
+energy of ResNet-18 despite having 4.7$\times$ fewer FLOPs, showing that in
+this setup architectural complexity proxies do not capture deployment energy.
+We further report Energy-Delay Product (EDP) as a unified
+energy-latency metric, under which MobileNetV3-Small has 13.3$\times$ lower
+EDP than EfficientNet-B0. This is a per-inference energy/latency comparison,
+not an accuracy-normalized efficiency claim. To support exploratory
+repeated-trial analysis without re-running the full benchmark, we develop a
+residualized conditional WGAN-GP. An initial
 configuration trained on raw physical values across heterogeneous devices
 exhibited mode collapse; switching to combo-normalized residuals within a
 single-device scope resolved this. The revised GAN reproduces measured means
 within 1.0--2.3\% on energy and preserves the measured ranking. We frame the
-synthetic spreads as support estimates for repeated trials and identify direct
-validation against independent measurements as required future work. The
-methodological lesson generalizes: synthetic models of hardware behavior under
-sparse data must be tightly scoped and trained on normalized residual structure
-rather than raw heterogeneous values.
+synthetic component as supplemental: its spreads are support estimates for
+repeated trials, not substitutes for independently measured trial-level energy
+statistics. Direct validation against independent measurements remains required
+future work. The
+methodological lesson is that synthetic models of hardware behavior under
+sparse data should be tightly scoped and trained on normalized residual
+structure rather than raw heterogeneous values.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -77,26 +82,28 @@ expenditure \cite{horowitz2014,mittal2019,hardwareaware2019,eyeriss2017}.
 
 This paper makes three contributions:
 
-\textbf{(1) An empirical benchmark on Apple Silicon} measuring inference
+\textbf{(1) An empirical benchmark on Apple Silicon} measuring mean inference
 energy for five neural network architectures under a unified CPU-only PyTorch
 runtime. We quantify how strongly common proxies predict measured behavior and
-report Energy-Delay Product as a unified efficiency metric. The central finding
-is that latency, not FLOPs, predicts measured energy on this platform.
+report Energy-Delay Product as an energy-latency metric. The central finding
+is that latency, not FLOPs, tracks measured energy in this five-model
+benchmark on this platform.
 
 \textbf{(2) An interpretive analysis} of why specific architectural choices
 (depthwise convolutions, transformer attention, compound scaling) interact with
 the CPU memory hierarchy and execution backend in ways that decouple FLOPs from
 measured energy.
 
-\textbf{(3) A residualized GAN methodology} for synthetic trial modeling under
-sparse-data conditions. We document a mode collapse failure under raw-scale,
-multi-device training and show that combo-normalized residuals within a
-single-device scope resolve it. We are explicit that the GAN's fidelity is
-evaluated against grounded training distributions rather than independent
-held-out trials, and we frame the synthetic spreads as support estimates
-rather than validated predictions. The implementation follows the WGAN-GP
-training framework \cite{wgangp2017} and tabular conditional generation
-motivation from CTGAN-style modeling \cite{ctgan2019}.
+\textbf{(3) A supplemental residualized GAN methodology} for exploratory
+synthetic trial modeling under sparse-data conditions. We document a mode
+collapse failure under raw-scale, multi-device training and show that
+combo-normalized residuals within a single-device scope resolve it. We are
+explicit that the GAN's fidelity is evaluated against grounded training
+distributions rather than independent held-out trials, and we frame the
+synthetic spreads as support estimates rather than validated predictions. The
+implementation follows the WGAN-GP training framework \cite{wgangp2017} and
+tabular conditional generation motivation from CTGAN-style modeling
+\cite{ctgan2019}.
 
 The synthetic component is motivated by a gap in measurement-campaign
 budgets. Re-running large benchmark sweeps with full trial-level logging is
@@ -128,9 +135,23 @@ synthetic-model scope sensitivity.
 \section{Methodology}
 
 \subsection{Measured Inference Benchmark}
-All benchmark runs used CPU-only inference in PyTorch with a fixed input
-tensor of size $1 \times 3 \times 224 \times 224$. Each model was executed
-with warm-up iterations followed by repeated timed inference runs.
+All primary five-model results use CPU-only inference in PyTorch with a fixed
+input tensor of size $1 \times 3 \times 224 \times 224$. The direct energy
+evidence available in the released repository is the paper-aligned table
+\texttt{paper\_apple\_silicon\_benchmark.csv}, which stores one reported mean
+energy and one reported mean latency per model. The source table reports
+Apple-Silicon CPU-only PyTorch inference measured with \texttt{powermetrics} at
+1 Hz; however, the current release does not contain the raw \texttt{powermetrics}
+logs, per-window energy traces, the number of measurement windows,
+inferences-per-window, window length, or exact original \texttt{powermetrics}
+command. We therefore treat the five-model energy measurements as mean
+window-attributed energy values only and do not report measured energy standard
+deviations or confidence intervals.
+
+To make the evidence chain auditable, the release also includes an expanded
+17-architecture CPU-only latency sweep with exact environment metadata and raw
+per-trial latency rows. This expanded sweep is not direct energy evidence:
+its energy and EDP columns are explicitly labeled constant-power proxies.
 
 CPU-only inference was selected for two reasons. First, it isolates a runtime
 configuration in which deployment-time energy is governed by the general-purpose
@@ -140,31 +161,60 @@ backends for Apple Silicon. Second, it removes accelerator scheduling
 nondeterminism (Neural Engine, Metal Performance Shaders) that would otherwise
 confound model-to-model comparison under a unified runtime.
 
-Inference was performed locally with background activity minimized. To reduce
-thermal-throttling effects on Apple Silicon, model order was randomized across
-runs and a fixed cooldown period was inserted between models. Power was sampled
-using \texttt{powermetrics} at 1 Hz. Because individual inference latencies
-(15--55 ms) are shorter than the sampling interval, energy was attributed by
-running many consecutive inferences within a measurement window and dividing
-the integrated window energy by the number of inferences. This window-level
-attribution is reported transparently as a methodological detail rather than
-treated as per-inference power resolution.
+Because individual inference latencies (15--55 ms) are shorter than the 1 Hz
+power-sampling interval, the primary energy values should be interpreted as
+window-level energy divided by the number of inferences in the window, not as
+instantaneous per-inference power resolution. The missing raw energy logs are
+listed explicitly in Table~\ref{tab:evidence-status} and in the release
+artifact appendix so that future revisions can fill the gap without changing
+the reported mean-energy analysis.
 
 \begin{table}[ht]
 \centering
-\caption{Hardware and software platform.}
+\caption{Logged hardware, software, and protocol details for the released expanded latency sweep.}
+\label{tab:environment}
+\small
+\resizebox{0.98\linewidth}{!}{%
 \begin{tabular}{ll}
 \toprule
 Component & Specification \\
 \midrule
-Device & Apple MacBook Pro, Apple Silicon \\
-Execution mode & CPU-only inference \\
-Runtime & PyTorch, CPU backend \\
-Operating system & macOS \\
-Memory & 8 GB RAM \\
-Power measurement & \texttt{powermetrics}, 1 Hz \\
+Device & MacBook Pro Mac16,8, Apple M4 Pro \\
+CPU topology & 12 cores: 8 performance, 4 efficiency \\
+Memory & 24 GB RAM \\
+Operating system & macOS 26.2, build 25C56 \\
+Python & 3.9.6 \\
+PyTorch & 2.8.0, CPU backend, float32 \\
+torchvision & Not used by expanded sweep; original version not archived \\
+Threads & \texttt{torch.set\_num\_threads(1)}; inter-op threads = 12 \\
+Accelerators & CUDA unavailable; MPS unavailable for this run \\
+Input and batch & $1 \times 3 \times 224 \times 224$, batch size 1 \\
+Warmups/trials & 10 warmups, 30 measured latency trials per architecture \\
+Power evidence & Primary table reports \texttt{powermetrics}, 1 Hz; raw command/logs not archived \\
 \bottomrule
 \end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Evidence status for measured and supplemental quantities.}
+\label{tab:evidence-status}
+\small
+\resizebox{0.90\linewidth}{!}{%
+\begin{tabular}{@{}p{0.32\linewidth}p{0.18\linewidth}p{0.30\linewidth}@{}}
+\toprule
+Quantity & Status & Repository artifact \\
+\midrule
+Five-model mean energy and latency & Direct reported means & Apple benchmark CSV \\
+Measured energy std., CI, and per-window counts & Not archived & Required future measurement artifact \\
+Raw \texttt{powermetrics} logs and exact command & Not archived & Required future measurement artifact \\
+17-architecture latency trials & Direct measured trials & Architecture trials CSV \\
+17-architecture latency mean/std/p50/p95 & Direct summary & Architecture summary CSV \\
+Synthetic energy spread & Supplemental estimate & Power/spread comparison CSV \\
+\bottomrule
+\end{tabular}
+}
 \end{table}
 
 \subsection{Models Evaluated}
@@ -206,8 +256,8 @@ a single efficiency score:
 \begin{equation}
 \text{EDP} = E \cdot L.
 \end{equation}
-Lower EDP indicates a model that is both faster and more energy-efficient. EDP
-is reported in units of J$\cdot$ms.
+Lower EDP indicates lower combined energy-latency cost per inference. EDP is
+reported in units of J$\cdot$ms.
 
 \subsection{Paper-Aligned Synthetic Trial Modeling}
 The synthetic extension is deliberately narrow. The synthetic pipeline uses
@@ -273,17 +323,27 @@ small-sample WGAN from shrinking repeated-trial spread.
 \subsection{Code and Data Availability}
 The benchmark tables, GAN source code, paper-aligned benchmark CSV, benchmark
 metadata file, derived summary CSVs, and reproduction commands are available
-in the accompanying public repository. Large generated samples and checkpoint
-files are treated as derived artifacts and can be regenerated from the
-repository workflow.
+in the accompanying public repository. The key audit files are
+\texttt{paper\_apple\_silicon\_benchmark.csv},
+\texttt{measured\_architecture\_benchmark.csv},
+\texttt{measured\_architecture\_trials.csv},
+\texttt{measurement\_environment.json}, and
+\texttt{MEASUREMENT\_PROTOCOL.md}. The release does not include raw
+\texttt{powermetrics} traces for the original five-model energy table; those
+are treated as missing measurement artifacts rather than reconstructed from
+synthetic data. Large generated samples and checkpoint files are treated as
+derived artifacts and can be regenerated from the repository workflow.
 Reproducibility details are provided in Appendix~\ref{sec:appendix}.
 
 \section{Results}
 
 \subsection{Measured Energy Ranking}
 The measured ranking is shown in Fig.~\ref{fig:measured-energy}.
-MobileNetV3-Small is the most energy-efficient model. EfficientNet-B0 is the
-least, despite having substantially fewer FLOPs than ResNet-18.
+MobileNetV3-Small has the lowest measured per-inference energy in this
+five-model benchmark. EfficientNet-B0 has the highest measured per-inference
+energy, despite having substantially fewer FLOPs than ResNet-18. These
+rankings are energy/latency rankings for fixed-shape inference and are not
+normalized by task accuracy.
 
 \begin{figure}[ht]
 \centering
@@ -315,12 +375,13 @@ least, despite having substantially fewer FLOPs than ResNet-18.
 \label{fig:measured-energy}
 \end{figure}
 
-\subsection{Latency Predicts Energy; FLOPs Does Not}
+\subsection{Latency Tracks Energy; FLOPs Does Not}
 \label{sec:predictors}
 We fit two univariate linear models to the measured data, predicting energy
 from FLOPs and from latency respectively. Results are summarized in
-Table~\ref{tab:predictors}. Latency explains nearly all variance in measured
-energy ($R^2 = 0.99999$), while FLOPs explains only $R^2 = 0.00008$.
+Table~\ref{tab:predictors}. In this five-model benchmark, latency explains
+almost all observed variance in measured energy ($R^2 = 0.99999$), while FLOPs
+explains only $R^2 = 0.00008$.
 
 \begin{table}[ht]
 \centering
@@ -344,8 +405,8 @@ FLOPs remained weak, with leave-one-out $R^2$ ranging from 0.028 to 0.207.
 Parameter count was also unstable, with leave-one-out $R^2$ ranging from
 0.0003 to 0.494. As a rank-based check, Spearman correlation was 1.00 for
 latency, 0.60 for FLOPs, and 0.70 for parameter count. These sensitivity
-checks support the qualitative conclusion that latency is the robust predictor
-in this small benchmark.
+checks support the qualitative conclusion that latency is the stronger
+predictor within this five-model benchmark.
 
 The contrast is sharpest for two pairs:
 \begin{itemize}
@@ -384,7 +445,7 @@ factor of nearly six.
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Measured energy versus latency. Linear fit gives $R^2 = 0.99999$.}
+\caption{Measured energy versus latency for the five-model benchmark. Linear fit gives $R^2 = 0.99999$.}
 \label{fig:energy-vs-latency}
 \end{figure}
 
@@ -421,13 +482,14 @@ These interpretations are not novel as systems observations
 \cite{eyeriss2017,hardwareaware2019}, but they have not been previously
 reported for this specific set of architectures on Apple Silicon under a
 unified runtime, and they explain why latency dominates FLOPs as an energy
-predictor on this platform.
+proxy in this benchmark.
 
 \subsection{Energy-Delay Product}
 Table~\ref{tab:edp} reports EDP for the five architectures. EDP penalizes
-both slow and energy-hungry models. Under EDP, MobileNetV3-Small is the most
-efficient model in the set, with an EDP 13.4$\times$ lower than
-EfficientNet-B0.
+both slow and energy-hungry models. Under EDP, MobileNetV3-Small has the
+lowest EDP in the set, with an EDP 13.3$\times$ lower than
+EfficientNet-B0. This metric is not accuracy-normalized; it measures
+energy-latency cost per inference for the fixed input shape.
 
 \begin{table}[ht]
 \centering
@@ -446,9 +508,9 @@ EfficientNet-B0 & 16.083 & 13.28 \\
 \end{tabular}
 \end{table}
 
-\subsection{Paper-Aligned Synthetic Fidelity}
+\subsection{Supplemental Synthetic Fidelity}
 \label{sec:fidelity}
-The GAN was evaluated against the Apple-only grounded dataset.
+The exploratory GAN was evaluated against the Apple-only grounded dataset.
 Table~\ref{tab:fidelity} summarizes fidelity. Direct distributional tests are
 applied only to the modeled quantities, energy and latency. Power is evaluated
 as a derived quantity. Repeated-trial energy spread is evaluated as a
@@ -458,7 +520,7 @@ distribution, not against held-out measured trials.
 
 \begin{table}[ht]
 \centering
-\caption{GAN fidelity relative to the grounded Apple-only benchmark.}
+\caption{Supplemental GAN fidelity relative to the grounded Apple-only benchmark.}
 \label{tab:fidelity}
 \small
 \begin{tabular}{l c c c c}
@@ -516,7 +578,8 @@ EfficientNet-B0 & 0.292 & 0.29831 & 2.16 & 55.08 & 55.92 & 1.53 \\
 Table~\ref{tab:supplemental} reports derived average power and synthetic
 energy spread. Derived power values come directly from measured energy and
 latency. Synthetic spread values come from the calibrated GAN and are
-interpreted as support estimates for repeated trials.
+interpreted as support estimates for repeated trials, not as measured
+trial-level energy standard deviations.
 
 \begin{table}[ht]
 \centering
@@ -547,17 +610,18 @@ ENB0 & 5.3014 & 5.3752 & 1.39 & 0.0201 \\
 \end{table}
 
 \section{Discussion}
-The empirical results establish that on Apple Silicon under CPU-only PyTorch
-inference, latency is a near-perfect predictor of energy ($R^2 = 0.99999$),
-while FLOPs explains almost none of the measured energy variation ($R^2 = 0.00008$). The architectural
+The empirical results show that, in this five-model Apple-Silicon CPU-only
+PyTorch benchmark, latency is very strongly associated with energy
+($R^2 = 0.99999$), while FLOPs explains almost none of the measured energy
+variation ($R^2 = 0.00008$). The architectural
 interpretation in Section~\ref{sec:predictors} explains why: depthwise
 convolutions, compound scaling, and transformer attention each create memory
 behavior on a general-purpose CPU that decouples FLOPs from wall-clock time.
 Average power is roughly constant across the five models (5.28--5.32 W), so
 the model that takes longer simply pays for more wall-clock energy at a
 similar power level. This means EDP, which weights both factors, ranks the
-models in the same order as energy alone but with a wider efficiency spread
-(13.4$\times$ best-to-worst).
+models in the same order as energy alone but with a wider EDP spread
+(13.3$\times$ best-to-worst).
 
 The synthetic pipeline produced a tightly scoped repeated-trial model that
 reproduces the measured energy ranking and tracks measured means within
@@ -568,10 +632,10 @@ estimates predict the variance of physical repeated trials, because the GAN
 was trained and evaluated against a grounded distribution rather than
 independently held-out measurements.
 
-The methodological lesson from GAN development generalizes beyond this paper:
-when training data are sparse, a synthetic model must be tightly scoped to
-the target study and trained on normalized residual structure rather than
-raw heterogeneous values. We observed this directly: a multi-device
+The methodological lesson from this GAN development step is narrower but
+practical: when training data are sparse, a synthetic model should be tightly
+scoped to the target study and trained on normalized residual structure rather
+than raw heterogeneous values. We observed this directly: a multi-device
 raw-scale configuration mode-collapsed, while the same architecture trained
 on combo-normalized residuals within a single-device scope reproduced
 per-model structure faithfully.
@@ -579,10 +643,12 @@ per-model structure faithfully.
 \section{Limitations and Future Work}
 \label{sec:limitations}
 \textbf{Trial-level measurement.} The benchmark recorded means but did not
-preserve per-trial spreads at sufficient resolution. Re-running each model
-with a controlled number of repeated trials and reporting measured standard
-deviations is the most important extension and would also enable direct
-validation of the synthetic spread estimates against held-out measurements.
+preserve per-trial energy spreads, confidence intervals, measurement-window
+counts, raw \texttt{powermetrics} logs, or the exact original power-sampling
+command. Re-running each model with a controlled number of repeated energy
+windows and reporting measured standard deviations and confidence intervals is
+the most important extension and would also enable direct validation of the
+synthetic spread estimates against held-out measurements.
 
 \textbf{Single-device scope.} The paper is a single-device study. Replicating
 the benchmark on additional devices, with the same input shape, runtime
@@ -594,6 +660,12 @@ multi-device synthetic model.
 interval is coarse relative to per-inference latency. We addressed this with
 window-level energy attribution, but higher-resolution power traces would
 support per-inference rather than per-window analysis.
+
+\textbf{Accuracy normalization.} This study reports energy, latency, and EDP
+per inference. It does not normalize by ImageNet top-1 accuracy or any other
+task-performance metric, so the word ``efficient'' should be read as
+energy-latency efficient under the fixed input and runtime, not as
+accuracy-normalized model quality per joule.
 
 \textbf{Synthetic validation.} GAN fidelity is evaluated against grounded
 training data. Direct validation against an independent set of measured
@@ -613,11 +685,13 @@ energy rankings, which is itself a topic for future work.
 
 \section{Conclusion}
 This study finds that on Apple Silicon under CPU-only PyTorch inference,
-energy efficiency cannot be reduced to FLOPs or parameter count alone.
-Latency predicts energy at $R^2 = 0.99999$, while FLOPs achieves only
-$R^2 = 0.00008$. Under Energy-Delay Product, MobileNetV3-Small is 13.4$\times$
-more efficient than EfficientNet-B0, with the rest of the architectures in
-between. A residualized conditional WGAN-GP, trained within a single-device
+per-inference energy/latency behavior cannot be reduced to FLOPs or parameter
+count alone.
+In this five-model benchmark, latency tracks energy at $R^2 = 0.99999$,
+while FLOPs achieves only $R^2 = 0.00008$. Under Energy-Delay Product,
+MobileNetV3-Small has 13.3$\times$ lower EDP than EfficientNet-B0, with the
+rest of the architectures in between. A residualized conditional WGAN-GP,
+trained within a single-device
 scope after an initial raw-scale multi-device configuration exhibited mode
 collapse, reproduces the measured ranking and means within a few percent.
 The methodological lesson is that synthetic models of hardware behavior
@@ -627,6 +701,33 @@ structure rather than raw heterogeneous values.
 \appendices
 \section{Reproducibility}
 \label{sec:appendix}
+
+\subsection{Released Artifacts and Commands}
+The released repository separates direct measurements, derived proxy columns,
+and synthetic support data. The five-model energy means used in the main
+figures and predictor analysis are stored in:
+\begin{verbatim}
+paper_apple_silicon_benchmark.csv
+\end{verbatim}
+The expanded direct latency sweep can be reproduced with:
+\begin{verbatim}
+.venv/bin/python scripts/benchmark_architectures.py \
+  --trials 30 --warmup 10 --threads 1
+\end{verbatim}
+This command writes:
+\begin{verbatim}
+measured_architecture_benchmark.csv
+measured_architecture_trials.csv
+measurement_environment.json
+paper_baseline_comparison.csv
+\end{verbatim}
+The raw per-trial rows for the expanded sweep live in
+\texttt{measured\_architecture\_trials.csv}. The main five-model energy table
+does not have matching raw \texttt{powermetrics} logs in this release. Future
+energy releases should add a directory of raw power traces, one integrated
+energy row per measurement window, the exact \texttt{powermetrics} command,
+window duration, inferences per window, warmup count, cooldown policy, and
+randomized model order.
 
 \subsection{GAN Architecture and Training}
 The conditional WGAN-GP implementation uses one-hot device/model conditioning
@@ -656,11 +757,16 @@ match the grounded Apple-only seed distribution variance. Means are unaffected
 by this rescaling.
 
 \subsection{Random Seeds and Software Environment}
-The released workflow fixes the GAN seed at 42 and specifies package ranges in
-the repository requirements file: PyTorch $\geq 2.0$, NumPy $\geq 1.24$, pandas
-$\geq 2.0$, scikit-learn $\geq 1.3$, and SciPy $\geq 1.11$. Future measured
-benchmark releases should additionally log the exact PyTorch, torchvision,
-Python, macOS, chip, and power-sampling versions used during data collection.
+The released GAN workflow fixes the GAN seed at 42 and specifies package
+ranges in the repository requirements file: PyTorch $\geq 2.0$, NumPy
+$\geq 1.24$, pandas $\geq 2.0$, scikit-learn $\geq 1.3$, and SciPy
+$\geq 1.11$. The expanded latency sweep logs exact runtime details in
+\texttt{measurement\_environment.json}: Apple M4 Pro MacBook Pro Mac16,8,
+24 GB RAM, macOS 26.2 build 25C56, Python 3.9.6, PyTorch 2.8.0, CPU float32
+execution, CUDA unavailable, MPS unavailable, one PyTorch CPU thread, 12
+inter-op threads, input shape $1 \times 3 \times 224 \times 224$, 10 warmups,
+and 30 measured trials. The original five-model energy source does not archive
+the exact torchvision version or raw power-sampling command.
 
 \subsection{Sensitivity Checks}
 For the predictor analysis in Table~\ref{tab:predictors}, Pearson $r$ and
