@@ -6,9 +6,9 @@ Target repository:
 
 Final paper artifacts:
 
-- `paper_apple_silicon_only.pdf`: compiled paper PDF.
-- `paper_apple_silicon_only.tex`: final LaTeX source.
-- `tables/expanded_architecture_latency.tex`: expanded measured-latency architecture table included by the paper source.
+- `paper_revised_latex_all_fixes.pdf`: compiled IEEE-style paper PDF.
+- `paper_revised_latex_all_fixes.tex`: final LaTeX source.
+- `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks.
 
 Measured-data artifacts:
 
@@ -17,6 +17,7 @@ Measured-data artifacts:
 - `measured_architecture_trials.csv`: raw per-trial latency data for the expanded architecture sweep.
 - `measurement_environment.json`: exact local environment metadata for the expanded measurement run.
 - `paper_baseline_comparison.csv`: ranked baseline comparison with params, model size, MACs, FLOPs, latency, and proxy EDP.
+- `benchmark_metadata_all_fixes.json`: metadata referenced by the final paper.
 
 Synthetic/support artifacts:
 

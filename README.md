@@ -19,8 +19,9 @@ GAN/
 ├── evaluate.py
 ├── gan_model.py
 ├── data_utils.py
-├── paper_apple_silicon_only.tex
-├── paper_apple_silicon_only.pdf
+├── paper_revised_latex_all_fixes.tex
+├── paper_revised_latex_all_fixes.pdf
+├── benchmark_metadata_all_fixes.json
 ├── paper_apple_silicon_benchmark.csv
 ├── paper_alignment_comparison.csv
 ├── paper_alignment_power_std_comparison.csv
@@ -137,8 +138,9 @@ Interpretation:
 - `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
 - `scripts/benchmark_architectures.py`: repeatable local benchmark for the expanded measured architecture sweep
-- `paper_apple_silicon_only.tex`: revised Apple-Silicon-only manuscript source
-- `paper_apple_silicon_only.pdf`: compiled manuscript PDF
+- `paper_revised_latex_all_fixes.tex`: final IEEE-style manuscript source
+- `paper_revised_latex_all_fixes.pdf`: compiled manuscript PDF
+- `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks
 
 ## Paper-Specific Artifacts
 
@@ -151,6 +153,7 @@ Interpretation:
 - `measured_architecture_trials.csv`: raw trial-level latency measurements
 - `measurement_environment.json`: measurement machine metadata
 - `paper_baseline_comparison.csv`: FLOPs/params/model-size/latency/proxy-EDP comparison table
+- `benchmark_metadata_all_fixes.json`: benchmark and predictor-check metadata for the final paper
 - `MEASUREMENT_PROTOCOL.md`: what is measured versus derived/proxy
 - `RELEASE_MANIFEST.md`: files that should be present on `main` for release
 - `PAPER_DATA_APPENDIX.md`: explanation of what is measured, derived, and synthetic
