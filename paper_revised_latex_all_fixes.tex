@@ -15,6 +15,8 @@
 
 \pgfplotsset{compat=1.18}
 \sisetup{round-mode=places,round-precision=3}
+\emergencystretch=2em
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \begin{document}
 
@@ -216,7 +218,7 @@ Power evidence & Primary table reports \texttt{powermetrics}, 1 Hz; raw command/
 \label{tab:energy-environment}
 \small
 \resizebox{0.98\linewidth}{!}{%
-\begin{tabular}{@{}p{0.25\linewidth}p{0.65\linewidth}@{}}
+\begin{tabular}{@{}L{0.25\linewidth}L{0.65\linewidth}@{}}
 \toprule
 Component & Specification \\
 \midrule
@@ -229,7 +231,7 @@ PyTorch & 2.3.1, CPU backend, float32 \\
 torchvision / timm & 0.18.1 / 1.0.24 \\
 Threads & \texttt{torch.set\_num\_threads(1)}; inter-op threads = 1 \\
 Input and batch & $1 \times 3 \times 224 \times 224$, batch size 1 \\
-Power command & \texttt{sudo powermetrics --samplers cpu\_power,gpu\_power,ane\_power -i 1000 -n 20 -f text -o <raw>} \\
+Power command & \texttt{powermetrics} at 1 Hz; full command in Appendix~\ref{sec:appendix} \\
 Window protocol & 10 windows/model, 20 s/window, 20 samples/window, 10 warmups, 10 s cooldown \\
 Order & Randomized within each repeat; seed 20260430 \\
 \bottomrule
@@ -243,7 +245,7 @@ Order & Randomized within each repeat; seed 20260430 \\
 \label{tab:evidence-status}
 \small
 \resizebox{0.90\linewidth}{!}{%
-\begin{tabular}{lll}
+\begin{tabular}{@{}L{0.31\linewidth}L{0.24\linewidth}L{0.32\linewidth}@{}}
 \toprule
 Quantity & Status & Repository artifact \\
 \midrule
@@ -366,15 +368,15 @@ small-sample WGAN from shrinking repeated-trial spread.
 The benchmark tables, GAN source code, paper-aligned benchmark CSV, benchmark
 metadata file, derived summary CSVs, and reproduction commands are available
 in the accompanying public repository. The key audit files are
-\texttt{paper\_apple\_silicon\_benchmark.csv},
-\texttt{measured\_architecture\_benchmark.csv},
-\texttt{measured\_architecture\_trials.csv},
-\texttt{measurement\_environment.json}, and
-\texttt{MEASUREMENT\_PROTOCOL.md}. The release also includes the follow-up
-direct energy audit under \texttt{measured\_energy\_powermetrics/}, including
-\texttt{measured\_energy\_trials.csv},
-\texttt{measured\_energy\_summary.csv},
-\texttt{measurement\_environment\_energy.json}, and one raw
+\path{paper_apple_silicon_benchmark.csv},
+\path{measured_architecture_benchmark.csv},
+\path{measured_architecture_trials.csv},
+\path{measurement_environment.json}, and
+\path{MEASUREMENT_PROTOCOL.md}. The release also includes the follow-up
+direct energy audit under \path{measured_energy_powermetrics/}, including
+\path{measured_energy_trials.csv},
+\path{measured_energy_summary.csv},
+\path{measurement_environment_energy.json}, and one raw
 \texttt{powermetrics} text log per measured window. The original raw traces
 behind the paper-aligned mean table remain unavailable and are not
 reconstructed from synthetic data. Large generated samples and checkpoint
