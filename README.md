@@ -10,6 +10,8 @@ This repository contains:
 - direct repeated `powermetrics` energy-window artifacts for the five paper models
 - evaluation scripts for fidelity and ranking preservation
 - the revised LaTeX manuscript and supporting appendix/CSV artifacts
+- an anonymized FTC 2026 submission PDF/source built from the Springer-style
+  conference template
 
 ## Repo Layout
 
@@ -22,6 +24,8 @@ GAN/
 ├── data_utils.py
 ├── paper_revised_latex_all_fixes.tex
 ├── paper_revised_latex_all_fixes.pdf
+├── FTC2026_Anonymous_Submission.tex
+├── FTC2026_Anonymous_Submission.pdf
 ├── benchmark_metadata_all_fixes.json
 ├── paper_apple_silicon_benchmark.csv
 ├── paper_alignment_comparison.csv

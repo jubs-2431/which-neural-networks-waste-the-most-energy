@@ -8,6 +8,8 @@ Final paper artifacts:
 
 - `paper_revised_latex_all_fixes.pdf`: compiled IEEE-style paper PDF.
 - `paper_revised_latex_all_fixes.tex`: final LaTeX source.
+- `FTC2026_Anonymous_Submission.pdf`: anonymized FTC 2026 submission PDF using the Springer-style conference template.
+- `FTC2026_Anonymous_Submission.tex`: source for the anonymized FTC 2026 submission PDF.
 - `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks.
 
 Measured-data artifacts:
@@ -43,4 +45,4 @@ Release rule:
 
 - Main branch should contain the final PDF, source, metadata, measured CSVs, and scripts listed above.
 - Do not describe proxy energy/EDP columns as direct measurements.
-- Do not describe the new Apple M1 repeated-energy audit as the missing original raw windows for `paper_apple_silicon_benchmark.csv`; it is a follow-up direct measurement artifact.
+- Do not describe the new Apple M4 Pro repeated-energy audit as the missing original raw windows for `paper_apple_silicon_benchmark.csv`; it is a follow-up direct measurement artifact.
