@@ -155,10 +155,10 @@ What is directly measured:
 - Randomized model order within each repeat using seed `20260430`.
 
 Measurement environment:
-- MacBook Pro, Apple M1, 8 GB RAM.
-- macOS 26.3 build 25D125.
-- Python 3.12.1.
-- PyTorch 2.3.1, torchvision 0.18.1, timm 1.0.24.
+- MacBook Pro Mac16,8, Apple M4 Pro, 24 GB RAM.
+- macOS 26.2 build 25C56.
+- Python 3.9.6.
+- PyTorch 2.8.0, torchvision 0.23.0, timm 1.0.24.
 - Full metadata and the `powermetrics` command template are in
   `measured_energy_powermetrics/measurement_environment_energy.json`.
 
@@ -166,5 +166,6 @@ Important limitation:
 - This is a new local reproducibility audit. It provides real trial-level
   energy statistics and raw power logs, but it should not be described as the
   missing original raw windows behind `paper_apple_silicon_benchmark.csv`.
-- One Tiny-ViT window is a high-power outlier. It remains in the released CSV
-  and summary; no outlier filtering was applied.
+- High-power windows are visible in the released CSV, especially
+  MobileNetV3-Small repeat 6. They remain in the released CSV and summary; no
+  outlier filtering was applied.

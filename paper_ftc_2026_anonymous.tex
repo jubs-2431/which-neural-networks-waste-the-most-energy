@@ -124,7 +124,7 @@ model definitions. The
 audit records 10 repeated windows per model, 50 windows total, with raw power
 logs, per-window inference counts, per-window energy, measured standard
 deviations, standard errors, and 95\% confidence intervals. Because this audit
-was collected later on a local Apple M1 MacBook Pro, it is reported as a
+was collected later on a local Apple M4 Pro MacBook Pro, it is reported as a
 reproducibility and variance artifact rather than as the missing raw logs for
 the original paper-aligned mean table.
 
@@ -187,13 +187,13 @@ Power evidence & Primary table reports \texttt{powermetrics}, 1 Hz; raw command/
 \toprule
 Component & Specification \\
 \midrule
-Device & MacBook Pro (MacBookPro17,1), Apple M1 \\
-CPU topology & 8 cores: 4 performance, 4 efficiency \\
-Memory & 8 GB RAM \\
-Operating system & macOS 26.3, build 25D125 \\
-Python & 3.12.1 \\
-PyTorch & 2.3.1, CPU backend, float32 \\
-torchvision / timm & 0.18.1 / 1.0.24 \\
+Device & MacBook Pro Mac16,8, Apple M4 Pro \\
+CPU topology & 12 cores: 8 performance, 4 efficiency \\
+Memory & 24 GB RAM \\
+Operating system & macOS 26.2, build 25C56 \\
+Python & 3.9.6 \\
+PyTorch & 2.8.0, CPU backend, float32 \\
+torchvision / timm & 0.23.0 / 1.0.24 \\
 Threads & \texttt{torch.set\_num\_threads(1)}; inter-op threads = 1 \\
 Input and batch & $1 \times 3 \times 224 \times 224$, batch size 1 \\
 Power command & \texttt{sudo powermetrics --samplers cpu\_power,gpu\_power,ane\_power -i 1000 -n 20 -f text -o <raw>} \\
@@ -388,28 +388,30 @@ normalized by task accuracy.
 Table~\ref{tab:energy-repeat} reports the direct repeated
 \texttt{powermetrics} audit added for this submission. Each model has 10
 measured 20-second windows, with raw logs and per-window rows stored in the
-energy-audit artifact directory. Confidence intervals are
-Student-$t$ 95\% intervals over the 10 measured windows. The audit was
-collected on the local Apple M1 environment in
-Table~\ref{tab:energy-environment}; it supplies real repeated-window
-statistics and raw power traces, but it is not used to retroactively assign
-confidence intervals to the original paper-aligned mean table.
+energy-audit artifact directory. Confidence intervals are Student-$t$ 95\%
+intervals over the 10 measured windows. The audit was collected on the local
+Apple M4 Pro environment in Table~\ref{tab:energy-environment}. Absolute
+values differ from the paper-aligned mean table because the audit was
+collected in a later hardware/software environment. We therefore use it as
+local repeatability evidence, not as a replacement for the original source
+table or as a basis for retroactively assigning confidence intervals to that
+table.
 
-One Tiny-ViT-5M window measured 0.7605 J per inference, producing the wide
-Tiny-ViT confidence interval in Table~\ref{tab:energy-repeat}. We retain this
-window in the submitted data and summary rather than filtering it, because the
-purpose of the audit is to expose measurement variability and make the raw
+High-power windows are visible in the repeated audit, with the largest
+per-inference energy coming from MobileNetV3-Small repeat 6. We retain these
+windows in the submitted data and summary rather than filtering them, because
+the purpose of the audit is to expose measurement variability and make the raw
 evidence chain inspectable.
 
 \begin{table}[ht]
 \centering
-\caption{Direct repeated \texttt{powermetrics} audit on the local Apple M1 MacBook Pro.}
+\caption{Direct repeated \texttt{powermetrics} audit on the local Apple M4 Pro MacBook Pro.}
 \label{tab:energy-repeat}
 \small
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{l
 r
-S[table-format=3.1]
+S[table-format=4.1]
 S[table-format=1.4]
 S[table-format=1.4]
 c
@@ -418,20 +420,26 @@ S[table-format=1.3]}
 \toprule
 Model & {Windows} & {Inf./window} & {Mean $E$ (J)} & {$\sigma_E$ (J)} & {95\% CI for $E$ (J)} & {Latency (ms)} & {Power (W)} \\
 \midrule
-MobileNetV3-Small & 10 & 441.0 & 0.0669 & 0.0101 & [0.0597, 0.0741] & 45.39 & 1.473 \\
-MobileNetV2 & 10 & 315.0 & 0.0939 & 0.0143 & [0.0837, 0.1041] & 63.62 & 1.475 \\
-ResNet-18 & 10 & 262.0 & 0.1264 & 0.0154 & [0.1154, 0.1375] & 76.63 & 1.661 \\
-Tiny-ViT-5M & 10 & 134.5 & 0.2759 & 0.1745 & [0.1511, 0.4006] & 149.73 & 1.807 \\
-EfficientNet-B0 & 10 & 106.9 & 0.2684 & 0.0276 & [0.2487, 0.2882] & 187.70 & 1.431 \\
+MobileNetV3-Small & 10 & 2066.7 & 0.0614 & 0.0259 & [0.0429, 0.0800] & 9.70 & 6.250 \\
+MobileNetV2 & 10 & 1915.5 & 0.0661 & 0.0188 & [0.0526, 0.0795] & 10.45 & 6.288 \\
+ResNet-18 & 10 & 1936.8 & 0.0735 & 0.0080 & [0.0678, 0.0793] & 10.34 & 7.102 \\
+Tiny-ViT-5M & 10 & 800.7 & 0.1762 & 0.0286 & [0.1558, 0.1967] & 25.00 & 7.042 \\
+EfficientNet-B0 & 10 & 593.0 & 0.2057 & 0.0294 & [0.1847, 0.2267] & 33.76 & 6.088 \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
+As a robustness check on the qualitative predictor result, the M4 Pro audit
+means preserve the same pattern: latency explains most between-model energy
+variation ($R^2 = 0.980$), while FLOPs remains uninformative
+($R^2 = 0.001$). This check is reported separately because it reflects the
+later M4 Pro environment rather than the original paper-aligned source run.
+
 \subsection{Latency Tracks Energy; FLOPs Does Not}
 \label{sec:predictors}
-We fit two univariate linear models to the measured data, predicting energy
-from FLOPs and from latency respectively. Results are summarized in
+We fit two univariate linear models to the paper-aligned mean table, predicting
+energy from FLOPs and from latency respectively. Results are summarized in
 Table~\ref{tab:predictors}. In this five-model benchmark, latency explains
 almost all observed variance in measured energy ($R^2 = 0.99999$), while FLOPs
 explains only $R^2 = 0.00008$.
@@ -703,7 +711,7 @@ intervals, window counts, raw \texttt{powermetrics} logs, or the exact
 original power-sampling command. This study adds a follow-up direct
 energy audit with 10 measured windows per model, measured standard deviations,
 confidence intervals, and raw logs. However, that audit was collected later on
-a local Apple M1 MacBook Pro, not recovered from the original source run, so
+a local Apple M4 Pro MacBook Pro, not recovered from the original source run, so
 its intervals should be interpreted as local repeatability evidence rather
 than retroactive uncertainty estimates for the original mean table. A future
 revision should rerun the complete original benchmark with the same logging
@@ -841,8 +849,8 @@ inter-op threads, input shape $1 \times 3 \times 224 \times 224$, 10 warmups,
 and 30 measured trials. The original five-model energy source does not archive
 the exact torchvision version or raw power-sampling command. The follow-up
 direct energy audit logs exact runtime details in the energy audit environment
-JSON: Apple M1 MacBook Pro (MacBookPro17,1), 8 GB RAM, macOS 26.3 build
-25D125, Python 3.12.1, PyTorch 2.3.1, torchvision 0.18.1, timm 1.0.24, CPU
+JSON: Apple M4 Pro MacBook Pro Mac16,8, 24 GB RAM, macOS 26.2 build
+25C56, Python 3.9.6, PyTorch 2.8.0, torchvision 0.23.0, timm 1.0.24, CPU
 float32 execution, one PyTorch CPU thread, one inter-op thread, input shape
 $1 \times 3 \times 224 \times 224$, 10 repeated windows per model, 20 seconds
 per window, 1 Hz \texttt{powermetrics} sampling, 10 warmups, 10 seconds

@@ -163,9 +163,10 @@ superuser privileges. The script writes:
 - `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` logs.
 
 The included audit has 50 measured windows: 10 windows per model across the
-five paper architectures. One Tiny-ViT window is a high-power outlier; it is
-kept in the CSV and summary rather than filtered so the reported standard
-deviation and 95% CI remain auditable.
+five paper architectures. High-power windows are kept in the CSV and summary
+rather than filtered so the reported standard deviation and 95% CI remain
+auditable; MobileNetV3-Small repeat 6 is the largest high-power window in the
+current M4 Pro audit.
 
 ## Main Files
 

@@ -71,7 +71,7 @@ repeats, a fixed input shape of `1 x 3 x 224 x 224`, and
 The included audit used 10 windows per model, 20 seconds per window, 20
 `powermetrics` samples per window at 1 Hz, 10 warm-up inferences before each
 window, 10 seconds of cooldown between windows, and one PyTorch CPU thread.
-It was collected on the local Apple M1 MacBook Pro recorded in
+It was collected on the local Apple M4 Pro MacBook Pro recorded in
 `measured_energy_powermetrics/measurement_environment_energy.json`; it is a
 new reproducibility audit and should not be presented as the missing original
 raw windows behind `paper_apple_silicon_benchmark.csv`.
