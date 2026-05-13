@@ -12,11 +12,12 @@ This repository contains:
 - the revised LaTeX manuscript and supporting appendix/CSV artifacts
 - an anonymized FTC 2026 submission PDF/source built from the Springer-style
   conference template
+- an IEEE HPEC 2026 conference-format submission draft
 
 ## Repo Layout
 
 ```text
-GAN/
+which-neural-networks-waste-the-most-energy/
 ├── train.py
 ├── generate.py
 ├── evaluate.py
@@ -24,6 +25,8 @@ GAN/
 ├── data_utils.py
 ├── paper_revised_latex_all_fixes.tex
 ├── paper_revised_latex_all_fixes.pdf
+├── HPEC2026_Submission.tex
+├── HPEC2026_Submission.pdf
 ├── FTC2026_Anonymous_Submission.tex
 ├── FTC2026_Anonymous_Submission.pdf
 ├── benchmark_metadata_all_fixes.json
@@ -43,6 +46,16 @@ GAN/
 ├── scripts/measure_energy_powermetrics.py
 └── README.md
 ```
+
+## IEEE HPEC 2026 Draft
+
+`HPEC2026_Submission.tex` is a non-anonymous IEEEtran conference-format draft
+for IEEE HPEC 2026. It is compressed around the benchmarking and embedded
+performance story: direct energy measurement, latency/FLOPs predictor analysis,
+the M4 Pro `powermetrics` audit, limitations, and artifact availability.
+
+The compiled PDF is `HPEC2026_Submission.pdf`; the current draft is 6 pages,
+matching the HPEC full-paper limit.
 
 ## Environment
 
@@ -80,16 +93,16 @@ Recommended commands:
 python train.py \
   --data_csv paper_apple_silicon_benchmark.csv \
   --devices apple_silicon \
-  --observed_only
+  --observed_only \
+  --feature_mode paper_aligned
 
 python generate.py \
-  --checkpoint checkpoints_paper_apple_20260410/generator_final.pt \
+  --checkpoint checkpoints/generator_final.pt \
   --data_csv paper_apple_silicon_benchmark.csv \
   --devices apple_silicon \
   --observed_only \
+  --feature_mode paper_aligned \
   --match_seed_variance \
-  --derive_power \
-  --recompute_energy_std \
   --n_samples 10000 \
   --output paper_apple_silicon_synth_10k_fixed.csv
 
@@ -104,7 +117,9 @@ python evaluate.py \
 ## Current Paper-Aligned Results
 
 These are the current calibrated paper-aligned evaluation results from
-`paper_apple_silicon_synth_10k_fixed.csv`.
+the committed summary artifacts `paper_alignment_comparison.csv` and
+`paper_alignment_power_std_comparison.csv`. The full generated synthetic CSV is
+a regenerable output and is not committed.
 
 - `energy_J`: Wasserstein `0.003939`, KS `0.0636`, `p=0.1561`
 - `latency_ms`: Wasserstein `0.693447`, KS `0.0669`, `p=0.1195`
@@ -180,6 +195,7 @@ current M4 Pro audit.
 - `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
 - `scripts/benchmark_architectures.py`: repeatable local benchmark for the expanded measured architecture sweep
 - `scripts/measure_energy_powermetrics.py`: repeatable five-model direct energy-window benchmark using `powermetrics`
+- `scripts/validate_hpec_consistency.py`: checks that HPEC paper tables match committed CSV artifacts
 - `paper_revised_latex_all_fixes.tex`: final IEEE-style manuscript source
 - `paper_revised_latex_all_fixes.pdf`: compiled manuscript PDF
 - `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks
@@ -187,7 +203,6 @@ current M4 Pro audit.
 ## Paper-Specific Artifacts
 
 - `paper_apple_silicon_benchmark.csv`: Apple-Silicon benchmark rows aligned to the paper
-- `paper_apple_silicon_synth_10k_fixed.csv`: calibrated synthetic dataset used by the revised manuscript
 - `paper_alignment_comparison.csv`: measured vs synthetic means
 - `paper_alignment_power_std_comparison.csv`: derived power and calibrated spread comparison
 - `paper_supplemental_metrics.csv`: paper-safe derived/support values
@@ -203,6 +218,17 @@ current M4 Pro audit.
 - `MEASUREMENT_PROTOCOL.md`: what is measured versus derived/proxy
 - `RELEASE_MANIFEST.md`: files that should be present on `main` for release
 - `PAPER_DATA_APPENDIX.md`: explanation of what is measured, derived, and synthetic
+
+## Consistency Check
+
+Run this before submitting or pushing paper edits:
+
+```bash
+python3 scripts/validate_hpec_consistency.py
+```
+
+It verifies that the HPEC tables match the committed CSV artifacts and that the
+energy/latency summary files recompute from the raw trial rows.
 
 ## Important Interpretation Notes
 

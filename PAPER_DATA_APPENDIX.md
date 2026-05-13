@@ -1,12 +1,12 @@
 # Paper Data Appendix
 
-This note documents the strongest paper-aligned benchmark data derived from
-`/Users/aryanshah/Downloads/main.pdf` and the limits of the available evidence.
+This note documents the strongest paper-aligned benchmark data extracted from
+the original `main.pdf` Table 3 and the limits of the available evidence.
 
 ## Directly Reported by the Paper
 
 Source:
-- `/Users/aryanshah/Downloads/main.pdf`
+- original `main.pdf` Table 3 extraction
 
 Extracted from Table 3:
 - Device: Apple Silicon
@@ -25,7 +25,7 @@ Extracted from Table 3:
 ## Supplemental Values Added
 
 File:
-- `/Users/aryanshah/Downloads/GAN/paper_supplemental_metrics.csv`
+- `paper_supplemental_metrics.csv`
 
 These supplemental values are documented so they can be described honestly in
 the paper.
@@ -72,10 +72,10 @@ directly measured statistics from the paper.
 ## Expanded Direct Latency Measurements
 
 Files:
-- `/Users/aryanshah/Downloads/GAN/measured_architecture_benchmark.csv`
-- `/Users/aryanshah/Downloads/GAN/measured_architecture_trials.csv`
-- `/Users/aryanshah/Downloads/GAN/measurement_environment.json`
-- `/Users/aryanshah/Downloads/GAN/paper_baseline_comparison.csv`
+- `measured_architecture_benchmark.csv`
+- `measured_architecture_trials.csv`
+- `measurement_environment.json`
+- `paper_baseline_comparison.csv`
 
 These files were added after the original five-model Apple-Silicon energy table
 to strengthen the architecture-level baseline evidence.
