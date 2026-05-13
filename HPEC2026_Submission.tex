@@ -543,25 +543,39 @@ hardware identifier, software versions, and whether accelerators were enabled.
 Without those controls, energy comparisons can become statements about hidden
 runtime choices rather than about the architecture being evaluated.
 
+\subsection{External Embedded Reference Points}
+
+Table~\ref{tab:external} gives non-Apple reference points from public embedded
+benchmarks: Coral Edge TPU \cite{coralbench,coralfaq}, PyTorch Raspberry Pi
+\cite{pytorchrpi}, and STM32 AI Model Zoo \cite{stm32zoo}. These rows are not
+used in the Apple-Silicon regression and should not be read as direct
+measurements from our artifact.
+
 \begin{table}[t]
 \centering
-\caption{Reproducibility checklist for the submitted artifact.}
-\label{tab:repro}
-\small
-\begin{tabular}{L{0.43\linewidth}L{0.47\linewidth}}
+\caption{External embedded reference points. Energy is included only when it
+can be inferred from a reported latency and an explicit published power figure.}
+\label{tab:external}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{L{0.20\linewidth}L{0.20\linewidth}rrL{0.13\linewidth}}
 \toprule
-Item & Included artifact \\
+Device & Model & Lat. & Energy & Evidence \\
+ & & (ms) & (J) & \\
 \midrule
-Paper source and compiled draft & IEEEtran \LaTeX{} source and PDF \\
-Primary benchmark table & Apple-Silicon benchmark CSV \\
-Repeated energy audit & 50-window summary and raw logs \\
-Measurement metadata & JSON hardware/software environment files \\
-Latency sweep & 17-architecture CSV and raw latency trials \\
-Protocol description & measurement protocol markdown file \\
-Synthetic-model evaluation & WGAN-GP code and fidelity metrics \\
+Coral TPU & MNetV2 & 2.6 & 0.0052 & inferred\\
+R-Pi 4 & MNetV2 & 26.4 & -- & latency\\
+R-Pi 4 & RN-18 & 100.3 & -- & latency\\
+STM32H747I & MNetV2 & 1118.27 & -- & latency\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The contrast is useful but limited. Coral's inferred energy uses a published
+2 W Edge TPU figure and benchmark latency, while the Raspberry Pi and STM32
+rows are latency-only. They therefore strengthen the motivation for
+hardware-specific measurement but do not replace our direct Apple-Silicon
+power logs.
 
 \section{Limitations}
 
@@ -674,6 +688,18 @@ D.~Patterson et al., ``Carbon emissions and large neural network training,''
 \bibitem{mlperf2020}
 V.~J. Reddi et al., ``MLPerf inference benchmark,'' in \emph{Proc. ACM/IEEE
 ISCA}, 2020.
+
+\bibitem{coralbench}
+Google Coral, ``Edge TPU performance benchmarks,'' accessed May 2026.
+
+\bibitem{coralfaq}
+Google Coral, ``Frequently asked questions,'' accessed May 2026.
+
+\bibitem{pytorchrpi}
+PyTorch, ``Real time inference on Raspberry Pi,'' accessed May 2026.
+
+\bibitem{stm32zoo}
+STMicroelectronics, ``STM32 AI model zoo: MobileNetV2,'' accessed May 2026.
 
 \bibitem{wgangp2017}
 I.~Gulrajani et al., ``Improved training of Wasserstein GANs,'' in
