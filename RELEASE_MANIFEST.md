@@ -6,10 +6,9 @@ Target repository:
 
 Final paper artifacts:
 
+- `papers/`: organized copies of the current HPEC, FTC, and revised manuscript versions.
 - `paper_revised_latex_all_fixes.pdf`: compiled IEEE-style paper PDF.
 - `paper_revised_latex_all_fixes.tex`: final LaTeX source.
-- `FTC2026_Anonymous_Submission.pdf`: anonymized FTC 2026 submission PDF using the Springer-style conference template.
-- `FTC2026_Anonymous_Submission.tex`: source for the anonymized FTC 2026 submission PDF.
 - `HPEC2026_Submission.pdf`: IEEE HPEC 2026 conference-format draft PDF.
 - `HPEC2026_Submission.tex`: source for the IEEE HPEC 2026 conference-format draft.
 - `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks.

@@ -1,61 +1,72 @@
 # Which Neural Networks Waste the Most Energy?
 
-Code and paper artifacts for the study:
+Companion repository for a small edge-AI inference-energy study. The current
+main paper draft is an IEEE HPEC 2026 submission titled:
 
-*Which Neural Networks Waste the Most Energy? A Study of Edge AI Inference with Paper-Aligned Synthetic Trial Modeling*
+**When FLOPs Mislead: Benchmarking Neural Network Inference Energy on Apple Silicon**
 
-This repository contains:
-- the tabular WGAN-GP code used for synthetic inference-trial generation
-- the Apple-Silicon paper-aligned benchmark inputs
-- direct repeated `powermetrics` energy-window artifacts for the five paper models
-- evaluation scripts for fidelity and ranking preservation
-- the revised LaTeX manuscript and supporting appendix/CSV artifacts
-- an anonymized FTC 2026 submission PDF/source built from the Springer-style
-  conference template
-- an IEEE HPEC 2026 conference-format submission draft
+The central result is narrow but reproducible: for five image-classification
+architectures under CPU-only PyTorch inference on Apple Silicon, measured
+per-inference energy tracks latency much more closely than FLOPs.
 
-## Repo Layout
+## Current Paper Files
+
+All available paper versions are collected in [`papers/`](papers/):
+
+- [`papers/HPEC2026_Submission.pdf`](papers/HPEC2026_Submission.pdf): current IEEE HPEC 2026 draft.
+- [`papers/HPEC2026_Upload_Copy.pdf`](papers/HPEC2026_Upload_Copy.pdf): upload-safe copy of the HPEC PDF.
+- [`papers/FTC2026_Anonymous_Submission.pdf`](papers/FTC2026_Anonymous_Submission.pdf): anonymized FTC 2026 version.
+- [`papers/Revised_IEEE_Style_Manuscript.pdf`](papers/Revised_IEEE_Style_Manuscript.pdf): earlier revised IEEE-style manuscript.
+
+Some root-level paper `.tex` and `.pdf` files are also kept for compatibility
+with existing links and scripts, but `papers/` is the canonical place to find
+all collected versions.
+
+## What Is Measured
+
+This repository separates direct measurements from derived or synthetic support
+data.
+
+- `paper_apple_silicon_benchmark.csv`: original five-model Apple-Silicon
+  benchmark table used by the paper.
+- `measured_energy_powermetrics/`: direct repeated `powermetrics` audit for the
+  five paper models, including raw logs, trial rows, summary rows, and machine
+  metadata.
+- `measured_architecture_benchmark.csv`: direct latency-only benchmark for 17
+  self-contained PyTorch architecture variants.
+- `measured_architecture_trials.csv`: raw latency trials for the 17-architecture
+  sweep.
+- `paper_alignment_comparison.csv`, `paper_alignment_power_std_comparison.csv`,
+  and `paper_supplemental_metrics.csv`: paper-aligned synthetic/support
+  summaries.
+
+Important interpretation:
+
+- The five-model energy audit is direct measured energy.
+- The 17-architecture sweep is direct latency only.
+- Energy/EDP columns in the 17-architecture sweep are constant-power proxies,
+  not `powermetrics` measurements.
+- Synthetic spread estimates are support data, not replacement measurements.
+
+## Repository Layout
 
 ```text
-which-neural-networks-waste-the-most-energy/
-├── train.py
-├── generate.py
-├── evaluate.py
-├── gan_model.py
+.
+├── papers/                                  # collected paper versions
+├── measured_energy_powermetrics/            # direct M4 Pro energy audit
+├── scripts/
+│   ├── benchmark_architectures.py           # 17-architecture latency sweep
+│   ├── measure_energy_powermetrics.py       # five-model direct energy audit
+│   └── validate_hpec_consistency.py         # paper/table consistency check
+├── train.py                                 # residual WGAN-GP training
+├── generate.py                              # synthetic sample generation
+├── evaluate.py                              # synthetic fidelity evaluation
 ├── data_utils.py
-├── paper_revised_latex_all_fixes.tex
-├── paper_revised_latex_all_fixes.pdf
-├── HPEC2026_Submission.tex
-├── HPEC2026_Submission.pdf
-├── FTC2026_Anonymous_Submission.tex
-├── FTC2026_Anonymous_Submission.pdf
-├── benchmark_metadata_all_fixes.json
-├── paper_apple_silicon_benchmark.csv
-├── paper_alignment_comparison.csv
-├── paper_alignment_power_std_comparison.csv
-├── paper_supplemental_metrics.csv
-├── measured_architecture_benchmark.csv
-├── measured_architecture_trials.csv
-├── measurement_environment.json
-├── measured_energy_powermetrics/
-├── paper_baseline_comparison.csv
-├── MEASUREMENT_PROTOCOL.md
-├── RELEASE_MANIFEST.md
-├── PAPER_DATA_APPENDIX.md
-├── scripts/benchmark_architectures.py
-├── scripts/measure_energy_powermetrics.py
+├── gan_model.py
+├── HPEC2026_Submission.tex/.pdf
+├── paper_revised_latex_all_fixes.tex/.pdf
 └── README.md
 ```
-
-## IEEE HPEC 2026 Draft
-
-`HPEC2026_Submission.tex` is a non-anonymous IEEEtran conference-format draft
-for IEEE HPEC 2026. It is compressed around the benchmarking and embedded
-performance story: direct energy measurement, latency/FLOPs predictor analysis,
-the M4 Pro `powermetrics` audit, limitations, and artifact availability.
-
-The compiled PDF is `HPEC2026_Submission.pdf`; the current draft is 6 pages,
-matching the HPEC full-paper limit.
 
 ## Environment
 
@@ -65,99 +76,34 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Two Workflows
+## Validate The Paper Numbers
 
-### 1. General Residual GAN
-
-This is the broader multi-device tabular GAN workflow.
+Run this before submitting or pushing paper edits:
 
 ```bash
-python train.py --epochs 2000
-python generate.py --n_samples 10000 --output edge_ai_synthetic_10k.csv
-python evaluate.py --csv edge_ai_synthetic_10k.csv
+python3 scripts/validate_hpec_consistency.py
 ```
 
-### 2. Paper-Aligned Apple-Silicon Workflow
+This checks that the HPEC tables match the committed CSV artifacts and that the
+energy/latency summaries recompute from the raw trial rows.
 
-This is the workflow that matches the revised manuscript.
-
-Key points:
-- train only on the Apple-Silicon benchmark rows used by the paper
-- treat `energy_J` and `latency_ms` as the modeled quantities
-- derive `power_W` from energy and latency
-- report repeated-trial `energy_std` only after within-model variance calibration
-
-Recommended commands:
+## Reproduce The Latency Sweep
 
 ```bash
-python train.py \
-  --data_csv paper_apple_silicon_benchmark.csv \
-  --devices apple_silicon \
-  --observed_only \
-  --feature_mode paper_aligned
-
-python generate.py \
-  --checkpoint checkpoints/generator_final.pt \
-  --data_csv paper_apple_silicon_benchmark.csv \
-  --devices apple_silicon \
-  --observed_only \
-  --feature_mode paper_aligned \
-  --match_seed_variance \
-  --n_samples 10000 \
-  --output paper_apple_silicon_synth_10k_fixed.csv
-
-python evaluate.py \
-  --csv paper_apple_silicon_synth_10k_fixed.csv \
-  --data_csv paper_apple_silicon_benchmark.csv \
-  --devices apple_silicon \
-  --observed_only \
-  --feature_mode paper_aligned
-```
-
-## Current Paper-Aligned Results
-
-These are the current calibrated paper-aligned evaluation results from
-the committed summary artifacts `paper_alignment_comparison.csv` and
-`paper_alignment_power_std_comparison.csv`. The full generated synthetic CSV is
-a regenerable output and is not committed.
-
-- `energy_J`: Wasserstein `0.003939`, KS `0.0636`, `p=0.1561`
-- `latency_ms`: Wasserstein `0.693447`, KS `0.0669`, `p=0.1195`
-- derived `power_W`: Wasserstein `0.045739`, KS `0.0465`, `p=0.4984`
-- repeated-trial `energy_std`: matched after calibration
-- energy coverage: `100%`
-- ranking preserved: `mobilenetv3_small < mobilenetv2 < resnet18 < tiny_vit_5m < efficientnet_b0`
-
-## Expanded Measured Architecture Sweep
-
-The repo now includes a separate local repeated-trial latency benchmark over 17
-self-contained PyTorch architecture variants. This improves the baseline
-comparison without pretending that latency-only measurements are direct energy
-measurements.
-
-Run:
-
-```bash
-.venv/bin/python scripts/benchmark_architectures.py --trials 30 --warmup 10 --threads 1
+python3 scripts/benchmark_architectures.py --trials 30 --warmup 10 --threads 1
 ```
 
 Outputs:
 
-- `measured_architecture_benchmark.csv`: 17 architectures with measured latency mean/std/p50/p95, params, model size, MACs, FLOPs, throughput, and clearly labeled proxy energy/EDP columns.
-- `measured_architecture_trials.csv`: 510 raw measured latency trials.
-- `measurement_environment.json`: exact measurement-machine metadata.
-- `paper_baseline_comparison.csv`: latency-ranked baseline comparison for the paper.
+- `measured_architecture_benchmark.csv`
+- `measured_architecture_trials.csv`
+- `measurement_environment.json`
+- `paper_baseline_comparison.csv`
 
-Interpretation:
+## Reproduce The Direct Energy Audit
 
-- Latency statistics are direct measurements.
-- Energy/EDP columns in the expanded sweep are constant-power proxies and must not be described as direct `powermetrics` measurements.
-
-## Direct Repeated Energy Measurement
-
-The repo includes a direct repeated `powermetrics` audit under
-`measured_energy_powermetrics/`. To reproduce or extend those trial-level
-energy artifacts, run the workflow from a local terminal:
+This requires macOS and `sudo` access because `powermetrics` needs elevated
+privileges:
 
 ```bash
 python3 scripts/measure_energy_powermetrics.py \
@@ -169,79 +115,51 @@ python3 scripts/measure_energy_powermetrics.py \
   --threads 1
 ```
 
-macOS will ask for your admin password because `powermetrics` requires
-superuser privileges. The script writes:
+Outputs are written under `measured_energy_powermetrics/`.
 
-- `measured_energy_powermetrics/measured_energy_trials.csv`: one measured
-  energy row per model/window.
-- `measured_energy_powermetrics/measured_energy_summary.csv`: measured
-  per-model mean, standard deviation, SEM, 95% CI, and window count.
-- `measured_energy_powermetrics/measurement_environment_energy.json`: exact
-  hardware, software, thread, warmup, cooldown, randomized-order, and
-  `powermetrics` command metadata.
-- `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` logs.
+## Paper-Aligned Synthetic Workflow
 
-The included audit has 50 measured windows: 10 windows per model across the
-five paper architectures. High-power windows are kept in the CSV and summary
-rather than filtered so the reported standard deviation and 95% CI remain
-auditable; MobileNetV3-Small repeat 6 is the largest high-power window in the
-current M4 Pro audit.
-
-## Main Files
-
-- `train.py`: WGAN-GP training loop with conditional generation by device/model
-- `generate.py`: GAN sampling, postprocessing, and variance calibration
-- `evaluate.py`: fidelity metrics, KS tests, coverage, and paper-aligned derived-metric evaluation
-- `data_utils.py`: grounded seed construction, combo-aware scaling, and feature-mode support
-- `scripts/benchmark_architectures.py`: repeatable local benchmark for the expanded measured architecture sweep
-- `scripts/measure_energy_powermetrics.py`: repeatable five-model direct energy-window benchmark using `powermetrics`
-- `scripts/validate_hpec_consistency.py`: checks that HPEC paper tables match committed CSV artifacts
-- `paper_revised_latex_all_fixes.tex`: final IEEE-style manuscript source
-- `paper_revised_latex_all_fixes.pdf`: compiled manuscript PDF
-- `benchmark_metadata_all_fixes.json`: metadata for the final paper's benchmark and predictor checks
-
-## Paper-Specific Artifacts
-
-- `paper_apple_silicon_benchmark.csv`: Apple-Silicon benchmark rows aligned to the paper
-- `paper_alignment_comparison.csv`: measured vs synthetic means
-- `paper_alignment_power_std_comparison.csv`: derived power and calibrated spread comparison
-- `paper_supplemental_metrics.csv`: paper-safe derived/support values
-- `measured_architecture_benchmark.csv`: expanded direct latency measurements over 17 local architectures
-- `measured_architecture_trials.csv`: raw trial-level latency measurements
-- `measurement_environment.json`: measurement machine metadata
-- `paper_baseline_comparison.csv`: FLOPs/params/model-size/latency/proxy-EDP comparison table
-- `measured_energy_powermetrics/measured_energy_trials.csv`: 50 direct repeated `powermetrics` energy windows.
-- `measured_energy_powermetrics/measured_energy_summary.csv`: measured per-model mean, std, SEM, 95% CI, window count, latency, and power summaries.
-- `measured_energy_powermetrics/measurement_environment_energy.json`: exact environment and protocol metadata for the direct energy audit.
-- `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` text logs, one per measured window.
-- `benchmark_metadata_all_fixes.json`: benchmark and predictor-check metadata for the final paper
-- `MEASUREMENT_PROTOCOL.md`: what is measured versus derived/proxy
-- `RELEASE_MANIFEST.md`: files that should be present on `main` for release
-- `PAPER_DATA_APPENDIX.md`: explanation of what is measured, derived, and synthetic
-
-## Consistency Check
-
-Run this before submitting or pushing paper edits:
+The GAN workflow is supplemental. It models the Apple-Silicon rows using
+`energy_J` and `latency_ms`, then derives power and spread values for support
+tables.
 
 ```bash
-python3 scripts/validate_hpec_consistency.py
+python3 train.py \
+  --data_csv paper_apple_silicon_benchmark.csv \
+  --devices apple_silicon \
+  --observed_only \
+  --feature_mode paper_aligned
+
+python3 generate.py \
+  --checkpoint checkpoints/generator_final.pt \
+  --data_csv paper_apple_silicon_benchmark.csv \
+  --devices apple_silicon \
+  --observed_only \
+  --feature_mode paper_aligned \
+  --match_seed_variance \
+  --n_samples 10000 \
+  --output paper_apple_silicon_synth_10k_fixed.csv
+
+python3 evaluate.py \
+  --csv paper_apple_silicon_synth_10k_fixed.csv \
+  --data_csv paper_apple_silicon_benchmark.csv \
+  --devices apple_silicon \
+  --observed_only \
+  --feature_mode paper_aligned
 ```
 
-It verifies that the HPEC tables match the committed CSV artifacts and that the
-energy/latency summary files recompute from the raw trial rows.
+## Supporting Documentation
 
-## Important Interpretation Notes
-
-- Mean energy and latency come from the paper's Apple-Silicon benchmark.
-- Model-specific power values are derived from `energy_J * 1000 / latency_ms`.
-- Trial-spread values are synthetic support estimates, not direct measurements.
-- Expanded architecture latency mean/std values are direct local measurements.
-- Expanded architecture energy/EDP values are labeled constant-power proxies, not direct energy measurements.
-- Direct repeated energy stats are included under `measured_energy_powermetrics/`; rerunning `scripts/measure_energy_powermetrics.py` requires local admin privileges.
-- The paper-aligned evaluation should use `--feature_mode paper_aligned` in `evaluate.py`.
+- [`MEASUREMENT_PROTOCOL.md`](MEASUREMENT_PROTOCOL.md): what is measured versus proxy/synthetic.
+- [`PAPER_DATA_APPENDIX.md`](PAPER_DATA_APPENDIX.md): paper data provenance and limitations.
+- [`ONLINE_BENCHMARK_AUDIT.md`](ONLINE_BENCHMARK_AUDIT.md): external benchmark source audit.
+- [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md): release file checklist.
 
 ## Status
 
-The repository is set up as the companion codebase for the paper and is pushed to:
+The repository is intended to be the companion artifact for the HPEC 2026
+submission. The public remote is:
 
-`https://github.com/jubs-2431/which-neural-networks-waste-the-most-energy`
+```text
+https://github.com/jubs-2431/which-neural-networks-waste-the-most-energy
+```
