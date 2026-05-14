@@ -117,6 +117,52 @@ python3 scripts/measure_energy_powermetrics.py \
 
 Outputs are written under `measured_energy_powermetrics/`.
 
+## Collect New PC Measurements
+
+Use this when extending the FTC paper into a substantially new HPEC submission
+with additional hardware data. The script records latency on any PC and records
+direct energy only when a supported power source is available:
+
+- NVIDIA GPU: sampled with `nvidia-smi` as GPU-only power.
+- Linux Intel CPU: sampled with RAPL package energy under `/sys/class/powercap`.
+- Other Windows CPU-only systems: latency-only unless you add an external power
+  meter or vendor-specific power backend.
+
+Recommended NVIDIA GPU run:
+
+```bash
+python3 scripts/measure_pc_inference.py \
+  --suite paper \
+  --device cuda \
+  --power-backend nvidia-smi \
+  --windows 10 \
+  --window-seconds 10 \
+  --warmups 10
+```
+
+Recommended Linux CPU/RAPL run:
+
+```bash
+python3 scripts/measure_pc_inference.py \
+  --suite paper \
+  --device cpu \
+  --power-backend rapl \
+  --windows 10 \
+  --window-seconds 10 \
+  --warmups 10 \
+  --threads 1
+```
+
+Outputs are written under `pc_measurements/`:
+
+- `pc_inference_trials.csv`
+- `pc_inference_summary.csv`
+- `pc_measurement_environment.json`
+- `raw_power/`
+
+For the HPEC paper, use these rows as a new hardware/runtime validation section,
+not as a replacement for the Apple-Silicon `powermetrics` audit.
+
 ## Paper-Aligned Synthetic Workflow
 
 The GAN workflow is supplemental. It models the Apple-Silicon rows using

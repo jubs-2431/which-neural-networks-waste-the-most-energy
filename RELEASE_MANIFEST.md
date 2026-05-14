@@ -36,6 +36,7 @@ Synthetic/support artifacts:
 Scripts:
 
 - `scripts/benchmark_architectures.py`: repeatable local architecture latency benchmark.
+- `scripts/measure_pc_inference.py`: portable PC latency and supported-power measurement script.
 - `scripts/validate_hpec_consistency.py`: validates HPEC table values against committed benchmark artifacts.
 - `train.py`
 - `generate.py`
