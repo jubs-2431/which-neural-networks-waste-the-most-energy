@@ -13,6 +13,7 @@ import shutil
 import statistics
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -121,6 +122,7 @@ class PowerMeter:
             "total_window_energy_J": "",
             "parsed_power_samples": 0,
             "power_note": "No supported direct power backend was selected or detected.",
+            "raw_power_text": "",
         }
 
 
@@ -135,31 +137,42 @@ class NvidiaSmiPowerMeter(PowerMeter):
     def available() -> bool:
         return shutil.which("nvidia-smi") is not None
 
-    def start(self, raw_path: Path) -> subprocess.Popen[str]:
-        cmd = [
-            "nvidia-smi",
-            "--query-gpu=timestamp,power.draw",
-            "--format=csv,noheader,nounits",
-            "-lms",
-            str(self.sample_interval_ms),
-        ]
-        return subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+    def start(self, raw_path: Path) -> dict[str, Any]:
+        stop_event = threading.Event()
+        samples: list[tuple[float, str]] = []
 
-    def stop(self, state: subprocess.Popen[str], elapsed_s: float) -> dict[str, Any]:
-        time.sleep(max(0.05, self.sample_interval_ms / 1000.0))
-        state.terminate()
-        try:
-            stdout, _ = state.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            state.kill()
-            stdout, _ = state.communicate(timeout=5)
+        def poll() -> None:
+            cmd = [
+                "nvidia-smi",
+                "--query-gpu=timestamp,power.draw",
+                "--format=csv,noheader,nounits",
+            ]
+            interval_s = max(0.05, self.sample_interval_ms / 1000.0)
+            while not stop_event.is_set():
+                try:
+                    out = subprocess.check_output(
+                        cmd,
+                        text=True,
+                        stderr=subprocess.DEVNULL,
+                        encoding="utf-8",
+                        errors="replace",
+                    ).strip()
+                    if out:
+                        for line in out.splitlines():
+                            samples.append((time.perf_counter(), line.strip()))
+                except Exception:
+                    pass
+                stop_event.wait(interval_s)
+
+        thread = threading.Thread(target=poll, daemon=True)
+        thread.start()
+        return {"stop_event": stop_event, "thread": thread, "samples": samples}
+
+    def stop(self, state: dict[str, Any], elapsed_s: float) -> dict[str, Any]:
+        state["stop_event"].set()
+        state["thread"].join(timeout=5)
+        raw_lines = [line for _timestamp, line in state["samples"]]
+        stdout = "\n".join(raw_lines)
         powers: list[float] = []
         for line in stdout.splitlines():
             parts = [p.strip() for p in line.split(",")]
@@ -176,6 +189,7 @@ class NvidiaSmiPowerMeter(PowerMeter):
             "total_window_energy_J": round(energy, 9) if math.isfinite(energy) else "",
             "parsed_power_samples": len(powers),
             "power_note": "GPU power sampled with nvidia-smi; energy is GPU-only, not whole-system energy.",
+            "raw_power_text": stdout,
         }
 
 
@@ -214,6 +228,7 @@ class RaplPowerMeter(PowerMeter):
             "total_window_energy_J": round(energy, 9),
             "parsed_power_samples": 2,
             "power_note": f"CPU package energy read from {self.energy_path}.",
+            "raw_power_text": "",
         }
 
 
@@ -476,7 +491,13 @@ def main() -> None:
         inference_count, elapsed_s = run_window(model, sample, device, args.window_seconds)
         power = meter.stop(power_state, elapsed_s)
         end_utc = datetime.now(timezone.utc).isoformat()
-        raw_path.write_text(json.dumps(power, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        raw_power_text = str(power.pop("raw_power_text", "") or "")
+        raw_path.write_text(
+            raw_power_text
+            if raw_power_text
+            else json.dumps(power, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
         total_energy = power["total_window_energy_J"]
         energy_per_inf = ""
