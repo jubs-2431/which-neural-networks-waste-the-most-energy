@@ -137,6 +137,33 @@ class NvidiaSmiPowerMeter(PowerMeter):
     def available() -> bool:
         return shutil.which("nvidia-smi") is not None
 
+    @staticmethod
+    def parse_power_w(line: str, *, allow_plain: bool = False) -> float | None:
+        parts = [p.strip() for p in line.split(",")]
+        candidates = [parts[-1]] if len(parts) > 1 else ([line] if allow_plain else [])
+        for candidate in candidates:
+            if not candidate or candidate.upper() in {"N/A", "[N/A]"}:
+                continue
+            match = re.search(r"([-+]?\d+(?:\.\d+)?)\s*(?:W)?\s*$", candidate)
+            if match:
+                return float(match.group(1))
+        return None
+
+    @staticmethod
+    def parse_power_q_avg_w(text: str) -> float | None:
+        in_power_samples = False
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if line == "Power Samples":
+                in_power_samples = True
+                continue
+            if in_power_samples and line and not line.startswith(("Duration", "Number of Samples", "Max", "Min", "Avg")):
+                in_power_samples = False
+            if in_power_samples and line.startswith("Avg"):
+                _, _, value = line.partition(":")
+                return NvidiaSmiPowerMeter.parse_power_w(value, allow_plain=True)
+        return None
+
     def start(self, raw_path: Path) -> dict[str, Any]:
         stop_event = threading.Event()
         samples: list[tuple[float, str]] = []
@@ -147,6 +174,7 @@ class NvidiaSmiPowerMeter(PowerMeter):
                 "--query-gpu=timestamp,power.draw",
                 "--format=csv,noheader,nounits",
             ]
+            power_q_cmd = ["nvidia-smi", "-q", "-d", "POWER"]
             interval_s = max(0.05, self.sample_interval_ms / 1000.0)
             while not stop_event.is_set():
                 try:
@@ -158,8 +186,27 @@ class NvidiaSmiPowerMeter(PowerMeter):
                         errors="replace",
                     ).strip()
                     if out:
+                        parsed_any = False
                         for line in out.splitlines():
                             samples.append((time.perf_counter(), line.strip()))
+                            parsed_any = parsed_any or self.parse_power_w(line) is not None
+                        if not parsed_any:
+                            power_q = subprocess.check_output(
+                                power_q_cmd,
+                                text=True,
+                                stderr=subprocess.DEVNULL,
+                                encoding="utf-8",
+                                errors="replace",
+                            )
+                            fallback_power = self.parse_power_q_avg_w(power_q)
+                            if fallback_power is not None:
+                                samples.append(
+                                    (
+                                        time.perf_counter(),
+                                        f"nvidia-smi -q Power Samples Avg, {fallback_power}",
+                                    )
+                                )
+                            samples.append((time.perf_counter(), power_q.strip()))
                 except Exception:
                     pass
                 stop_event.wait(interval_s)
@@ -175,13 +222,9 @@ class NvidiaSmiPowerMeter(PowerMeter):
         stdout = "\n".join(raw_lines)
         powers: list[float] = []
         for line in stdout.splitlines():
-            parts = [p.strip() for p in line.split(",")]
-            if not parts:
-                continue
-            try:
-                powers.append(float(parts[-1]))
-            except ValueError:
-                continue
+            power_w = self.parse_power_w(line)
+            if power_w is not None:
+                powers.append(power_w)
         mean_power = statistics.fmean(powers) if powers else float("nan")
         energy = mean_power * elapsed_s if math.isfinite(mean_power) else float("nan")
         return {

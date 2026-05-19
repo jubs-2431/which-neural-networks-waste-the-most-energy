@@ -51,10 +51,22 @@ ARCH_LABELS = {
 
 
 def expect_close(label: str, got: float, expected: float, decimals: int, issues: list[str]) -> None:
-    if round(got, decimals) != round(expected, decimals):
+    tolerance = 0.5 * (10 ** -decimals) + 1e-12
+    if abs(got - expected) > tolerance:
         issues.append(
             f"{label}: paper has {got}, expected {expected} at {decimals} decimals"
         )
+
+
+def table_body(tex: str, label: str) -> str:
+    match = re.search(
+        rf"\\label\{{{re.escape(label)}\}}(?P<body>.*?)\\end\{{tabular\}}",
+        tex,
+        re.DOTALL,
+    )
+    if match is None:
+        raise ValueError(f"could not find table body for {label}")
+    return match.group("body")
 
 
 def validate_hpec_tables(issues: list[str]) -> None:
@@ -64,7 +76,7 @@ def validate_hpec_tables(issues: list[str]) -> None:
     for label, flops, latency, energy, edp in re.findall(
         r"(MobileNetV3-S|MobileNetV2|ResNet-18|Tiny-ViT-5M|EfficientNet-B0)"
         r" & ([0-9.]+) & ([0-9.]+) & ([0-9.]+) & ([0-9.]+)\\\\",
-        tex,
+        table_body(tex, "tab:primary"),
     ):
         model = MODEL_LABELS[label]
         expect_close(f"{label} FLOPs", float(flops), PRIMARY_FLOPS[model], 2, issues)
@@ -78,18 +90,28 @@ def validate_hpec_tables(issues: list[str]) -> None:
             issues,
         )
 
-    audit = pd.read_csv(ROOT / "measured_energy_powermetrics/measured_energy_summary.csv").set_index("model")
-    for label, energy, ci_low, ci_high, latency, power in re.findall(
-        r"(MobileNetV3-S|MobileNetV2|ResNet-18|Tiny-ViT-5M|EfficientNet-B0)"
-        r" & ([0-9.]+) & \[([0-9.]+),([0-9.]+)\] & ([0-9.]+) & ([0-9.]+)\\\\",
+    audit_specs = [
+        ("M1", ROOT / "measured_energy_powermetrics_m1/measured_energy_summary.csv"),
+        ("M4 Pro", ROOT / "measured_energy_powermetrics/measured_energy_summary.csv"),
+        ("M5 Pro", ROOT / "measured_energy_powermetrics_m5pro/measured_energy_summary.csv"),
+    ]
+    figure_body = re.search(
+        r"\\begin\{figure\*\}\[t\](?P<body>.*?)\\end\{figure\*\}",
         tex,
-    ):
-        model = MODEL_LABELS[label]
-        expect_close(f"{label} audit energy", float(energy), audit.loc[model, "energy_mean_J"], 3, issues)
-        expect_close(f"{label} audit CI low", float(ci_low), audit.loc[model, "energy_ci95_low_J"], 3, issues)
-        expect_close(f"{label} audit CI high", float(ci_high), audit.loc[model, "energy_ci95_high_J"], 3, issues)
-        expect_close(f"{label} audit latency", float(latency), audit.loc[model, "latency_mean_ms"], 2, issues)
-        expect_close(f"{label} audit power", float(power), audit.loc[model, "mean_power_W"], 2, issues)
+        re.DOTALL,
+    )
+    if figure_body is None:
+        issues.append("could not find audit energy figure")
+    else:
+        figure_text = figure_body.group("body")
+        for description, csv_path in audit_specs:
+            audit = pd.read_csv(csv_path)
+            for _, row in audit.iterrows():
+                rounded = f"{row.energy_mean_J:.3f}"
+                if rounded not in figure_text:
+                    issues.append(
+                        f"{description} {row.model} energy {rounded} not found in audit energy figure"
+                    )
 
     arch = pd.read_csv(ROOT / "measured_architecture_benchmark.csv").set_index("architecture")
     for label, _family, params, flops, latency, p95, cv in re.findall(
@@ -107,20 +129,20 @@ def validate_hpec_tables(issues: list[str]) -> None:
         expect_close(f"{label} CV", float(cv), row.latency_cv, 3, issues)
 
 
-def validate_artifact_internal_consistency(issues: list[str]) -> None:
-    energy_trials = pd.read_csv(ROOT / "measured_energy_powermetrics/measured_energy_trials.csv")
-    energy_summary = pd.read_csv(ROOT / "measured_energy_powermetrics/measured_energy_summary.csv")
-    raw_logs = list((ROOT / "measured_energy_powermetrics/raw_powermetrics").glob("*.txt"))
+def validate_energy_audit_internal_consistency(audit_dir: Path, description: str, issues: list[str]) -> None:
+    energy_trials = pd.read_csv(audit_dir / "measured_energy_trials.csv")
+    energy_summary = pd.read_csv(audit_dir / "measured_energy_summary.csv")
+    raw_logs = list((audit_dir / "raw_powermetrics").glob("*.txt"))
 
     if len(energy_trials) != 50:
-        issues.append(f"expected 50 energy trial rows, found {len(energy_trials)}")
+        issues.append(f"expected 50 {description} energy trial rows, found {len(energy_trials)}")
     if len(raw_logs) != 50:
-        issues.append(f"expected 50 raw powermetrics logs, found {len(raw_logs)}")
+        issues.append(f"expected 50 {description} raw powermetrics logs, found {len(raw_logs)}")
 
     expected_windows = dict(zip(energy_summary.model, energy_summary.n_windows))
     actual_windows = energy_trials.groupby("model").size().to_dict()
     if actual_windows != expected_windows:
-        issues.append(f"energy window counts mismatch: {actual_windows} != {expected_windows}")
+        issues.append(f"{description} energy window counts mismatch: {actual_windows} != {expected_windows}")
 
     grouped = energy_trials.groupby("model").agg(
         energy_mean=("energy_J_per_inference", "mean"),
@@ -129,9 +151,15 @@ def validate_artifact_internal_consistency(issues: list[str]) -> None:
     )
     for _, row in energy_summary.iterrows():
         calc = grouped.loc[row.model]
-        expect_close(f"{row.model} summary energy", row.energy_mean_J, calc.energy_mean, 6, issues)
-        expect_close(f"{row.model} summary latency", row.latency_mean_ms, calc.latency_mean, 6, issues)
-        expect_close(f"{row.model} summary power", row.mean_power_W, calc.power_mean, 6, issues)
+        expect_close(f"{description} {row.model} summary energy", row.energy_mean_J, calc.energy_mean, 6, issues)
+        expect_close(f"{description} {row.model} summary latency", row.latency_mean_ms, calc.latency_mean, 6, issues)
+        expect_close(f"{description} {row.model} summary power", row.mean_power_W, calc.power_mean, 6, issues)
+
+
+def validate_artifact_internal_consistency(issues: list[str]) -> None:
+    validate_energy_audit_internal_consistency(ROOT / "measured_energy_powermetrics_m1", "M1", issues)
+    validate_energy_audit_internal_consistency(ROOT / "measured_energy_powermetrics", "M4", issues)
+    validate_energy_audit_internal_consistency(ROOT / "measured_energy_powermetrics_m5pro", "M5", issues)
 
     arch_trials = pd.read_csv(ROOT / "measured_architecture_trials.csv")
     arch_summary = pd.read_csv(ROOT / "measured_architecture_benchmark.csv")
