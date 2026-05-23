@@ -103,6 +103,57 @@ directory so the artifacts remain machine-specific:
   --seed 20260523
 ```
 
+For the current limitation checks, keep these audits separate from the main
+CPU batch-1 224x224 table:
+
+```bash
+# MPS/Metal backend comparison.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --backend mps \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_mps_b1_224 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260524
+
+# Batch-size sensitivity.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --backend cpu \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_cpu_b4_224 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 4 \
+  --image-size 224 \
+  --seed 20260524
+
+# Input-size sensitivity. Patch mixers are excluded because their token MLP
+# is shape-fixed to 224x224 in this architecture registry.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --backend cpu \
+  --models global_avg_mlp_tiny,cnn_tiny_2conv,cnn_small_4conv,cnn_medium_6conv,depthwise_small,depthwise_medium,inverted_residual_small,inverted_residual_wide,residual_cnn_small,residual_cnn_medium,bottleneck_residual,grouped_conv_cnn,squeeze_expand_cnn,convnext_micro,attention_gate_cnn \
+  --output-dir measured_energy_powermetrics_m4pro_arch15_cpu_b1_128 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 128 \
+  --seed 20260524
+```
+
 This script prompts for `sudo` because macOS requires superuser privileges for
 `powermetrics`. It writes:
 
@@ -128,3 +179,7 @@ It was collected on the local Apple M4 Pro MacBook Pro recorded in
 `measured_energy_powermetrics/measurement_environment_energy.json`; it is a
 new reproducibility audit and should not be presented as the missing original
 raw windows behind `paper_apple_silicon_benchmark.csv`.
+
+Outlier policy: no measured windows are filtered or winsorized. High-power
+windows remain in raw logs, trial CSVs, summary statistics, confidence
+intervals, and paper analysis.

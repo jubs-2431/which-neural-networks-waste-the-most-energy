@@ -224,20 +224,48 @@ def parse_power_w(raw_text: str) -> dict[str, Any]:
     }
 
 
-def warmup(model: torch.nn.Module, sample: torch.Tensor, warmups: int) -> None:
+def mps_available() -> bool:
+    return bool(torch.backends.mps.is_built() and torch.backends.mps.is_available())
+
+
+def resolve_device(name: str) -> torch.device:
+    if name == "cpu":
+        return torch.device("cpu")
+    if name == "mps":
+        if not mps_available():
+            raise RuntimeError("MPS backend was requested, but torch.backends.mps.is_available() is false")
+        return torch.device("mps")
+    raise ValueError(f"unknown backend: {name}")
+
+
+def synchronize_if_needed(device: torch.device) -> None:
+    if device.type == "mps":
+        torch.mps.synchronize()
+
+
+def warmup(model: torch.nn.Module, sample: torch.Tensor, warmups: int, device: torch.device) -> None:
     with torch.inference_mode():
         for _ in range(warmups):
             model(sample)
+            synchronize_if_needed(device)
 
 
-def run_inference_window(model: torch.nn.Module, sample: torch.Tensor, seconds: float) -> tuple[int, float]:
+def run_inference_window(
+    model: torch.nn.Module,
+    sample: torch.Tensor,
+    seconds: float,
+    device: torch.device,
+) -> tuple[int, float]:
+    synchronize_if_needed(device)
     deadline = time.perf_counter() + seconds
     count = 0
     start = time.perf_counter()
     with torch.inference_mode():
         while time.perf_counter() < deadline:
             model(sample)
+            synchronize_if_needed(device)
             count += 1
+    synchronize_if_needed(device)
     end = time.perf_counter()
     return count, end - start
 
@@ -271,7 +299,7 @@ def run_powermetrics_window(
     start_utc = datetime.now(timezone.utc).isoformat()
     proc = subprocess.Popen(command)
     time.sleep(args.powermetrics_start_delay_s)
-    inference_count, elapsed_s = run_inference_window(model, sample, window_seconds)
+    inference_count, elapsed_s = run_inference_window(model, sample, window_seconds, args.torch_device)
     return_code = proc.wait()
     end_utc = datetime.now(timezone.utc).isoformat()
     if return_code != 0:
@@ -287,6 +315,9 @@ def run_powermetrics_window(
     return {
         "model": model_name,
         "family": MODEL_FAMILIES.get(model_name, ""),
+        "backend": args.backend,
+        "batch_size": args.batch_size,
+        "image_size": args.image_size,
         "trial": trial,
         "start_utc": start_utc,
         "end_utc": end_utc,
@@ -358,6 +389,9 @@ def summarize(rows: list[dict[str, Any]], model_order: list[str]) -> list[dict[s
             {
                 "model": model,
                 "family": MODEL_FAMILIES.get(model, ""),
+                "backend": group[0].get("backend", "") if group else "",
+                "batch_size": group[0].get("batch_size", "") if group else "",
+                "image_size": group[0].get("image_size", "") if group else "",
                 "n_windows": len(group),
                 "parsed_windows": len(energies),
                 "total_inferences": sum(infs),
@@ -402,7 +436,10 @@ def environment_metadata(args: argparse.Namespace, powermetrics_template: list[s
         "timm_version": timm.__version__,
         "torch_num_threads": torch.get_num_threads(),
         "torch_num_interop_threads": torch.get_num_interop_threads(),
-        "device": "cpu",
+        "backend": args.backend,
+        "device": str(args.torch_device),
+        "mps_built": torch.backends.mps.is_built(),
+        "mps_available": torch.backends.mps.is_available(),
         "dtype": "float32",
         "input_shape": [args.batch_size, 3, args.image_size, args.image_size],
         "model_set": args.model_set,
@@ -422,8 +459,9 @@ def environment_metadata(args: argparse.Namespace, powermetrics_template: list[s
             "per_window_inference_counts_retained": True,
             "environment_metadata_retained": True,
             "direct_energy_source": "powermetrics",
-            "backend": "CPU-only PyTorch",
-            "backend_scope_note": "CPU-only collection controls runtime variability; GPU, Metal, ANE, and quantized paths require separate matched runs.",
+            "backend": f"{args.backend} PyTorch",
+            "backend_scope_note": "Each backend/device condition is reported separately; CPU, MPS/Metal, ANE, GPU, quantized, batch-size, and input-size runs are not merged.",
+            "outlier_policy": "No measured windows are filtered or winsorized. High-power windows remain in trials, summaries, confidence intervals, and paper analysis.",
             "sampling_note": "1 Hz powermetrics is coarse for sub-100 ms inference, so each row averages many inferences inside a measurement window.",
         },
         "hardware_profile": hardware_profile(),
@@ -453,6 +491,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=10)
     parser.add_argument("--cooldown-seconds", type=float, default=10.0)
     parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--backend", choices=["cpu", "mps"], default="cpu")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--image-size", type=int, default=224)
     parser.add_argument("--seed", type=int, default=20260430)
@@ -468,6 +507,7 @@ def main() -> None:
         args.output_dir = PROJECT_ROOT / args.output_dir
     args.output_dir = args.output_dir.resolve()
     model_order = selected_models(args)
+    args.torch_device = resolve_device(args.backend)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = args.output_dir / "raw_powermetrics"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -484,10 +524,10 @@ def main() -> None:
         pass
     torch.manual_seed(args.seed)
     rng = random.Random(args.seed)
-    sample = torch.randn(args.batch_size, 3, args.image_size, args.image_size)
+    sample = torch.randn(args.batch_size, 3, args.image_size, args.image_size, device=args.torch_device)
 
     print(f"[load] building {len(model_order)} models from model_set={args.model_set}")
-    models = {name: build_model(name).eval().cpu() for name in model_order}
+    models = {name: build_model(name).eval().to(args.torch_device) for name in model_order}
 
     schedule: list[tuple[int, str]] = []
     for repeat in range(1, args.windows + 1):

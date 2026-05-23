@@ -91,6 +91,56 @@ Full 17-architecture M4 Pro CPU audit:
   --seed 20260523
 ```
 
+Short follow-up audits for limitations checks:
+
+```bash
+# MPS/Metal backend comparison, batch 1, 224x224.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --backend mps \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_mps_b1_224 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260524
+
+# Batch-size sensitivity on CPU, batch 4, 224x224.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --backend cpu \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_cpu_b4_224 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 4 \
+  --image-size 224 \
+  --seed 20260524
+
+# Input-size sensitivity on CPU, 128x128. Patch mixers are excluded because
+# their token MLP is shape-fixed to 224x224 in this architecture registry.
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --backend cpu \
+  --models global_avg_mlp_tiny,cnn_tiny_2conv,cnn_small_4conv,cnn_medium_6conv,depthwise_small,depthwise_medium,inverted_residual_small,inverted_residual_wide,residual_cnn_small,residual_cnn_medium,bottleneck_residual,grouped_conv_cnn,squeeze_expand_cnn,convnext_micro,attention_gate_cnn \
+  --output-dir measured_energy_powermetrics_m4pro_arch15_cpu_b1_128 \
+  --windows 5 \
+  --window-seconds 20 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 5 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 128 \
+  --seed 20260524
+```
+
 For another machine, keep the protocol fixed and change only `--output-dir`,
 for example `measured_energy_powermetrics_m1_arch17_cpu` or
 `measured_energy_powermetrics_m5pro_arch17_cpu`.
@@ -112,6 +162,10 @@ The `energy_proxy_J_constant_power` and `edp_proxy_J_s_constant_power` columns
 in `measured_architecture_benchmark.csv` remain constant-power proxy fields.
 Direct energy for those architectures is stored separately in
 `measured_energy_powermetrics_m4pro_arch17_cpu/`.
+
+Outlier policy: no measured windows are filtered or winsorized. High-power
+windows remain in raw logs, trial CSVs, summary statistics, confidence
+intervals, and paper analysis.
 
 ## Archive
 
