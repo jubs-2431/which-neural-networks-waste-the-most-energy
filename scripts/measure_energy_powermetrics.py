@@ -558,7 +558,7 @@ def main() -> None:
     total = len(schedule)
     for idx, (repeat, model_name) in enumerate(schedule, start=1):
         print(f"[{idx:02d}/{total}] {model_name} repeat={repeat}: warmup {args.warmups}")
-        warmup(models[model_name], sample, args.warmups)
+        warmup(models[model_name], sample, args.warmups, args.torch_device)
         raw_path = raw_dir / f"{idx:03d}_{model_name}_repeat{repeat}.txt"
         row = run_powermetrics_window(args, model_name, repeat, raw_path, models[model_name], sample)
         row["schedule_index"] = idx
