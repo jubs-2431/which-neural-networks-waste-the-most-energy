@@ -23,6 +23,10 @@ Measured-data artifacts:
 - `measured_energy_powermetrics/measured_energy_summary.csv`: per-model measured energy mean, standard deviation, SEM, 95% CI, window count, latency, and power summaries.
 - `measured_energy_powermetrics/measurement_environment_energy.json`: exact hardware, software, thread, warmup, cooldown, randomized-order, and `powermetrics` command metadata for the energy audit.
 - `measured_energy_powermetrics/raw_powermetrics/`: raw `powermetrics` text logs, one per measured energy window.
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measured_energy_trials.csv`: 170 direct repeated `powermetrics` energy windows for the 17-architecture M4 Pro CPU audit.
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measured_energy_summary.csv`: per-architecture measured energy mean, standard deviation, SEM, 95% CI, latency, and power summaries.
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measurement_environment_energy.json`: exact hardware, software, model-set, thread, warmup, cooldown, randomized-order, and `powermetrics` command metadata for the 17-architecture audit.
+- `measured_energy_powermetrics_m4pro_arch17_cpu/raw_powermetrics/`: raw `powermetrics` text logs, one per measured window.
 - `paper_baseline_comparison.csv`: ranked baseline comparison with params, model size, MACs, FLOPs, latency, and proxy EDP.
 - `benchmark_metadata_all_fixes.json`: metadata referenced by the final paper.
 
@@ -49,3 +53,4 @@ Release rule:
 - Main branch should contain the final PDF, source, metadata, measured CSVs, and scripts listed above.
 - Do not describe proxy energy/EDP columns as direct measurements.
 - Do not describe the new Apple M4 Pro repeated-energy audit as the missing original raw windows for `paper_apple_silicon_benchmark.csv`; it is a follow-up direct measurement artifact.
+- Do describe `measured_energy_powermetrics_m4pro_arch17_cpu/` as direct M4 Pro CPU-only energy evidence for the 17 architecture variants.

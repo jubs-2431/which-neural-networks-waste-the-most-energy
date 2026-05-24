@@ -20,15 +20,17 @@ the IEEE HPEC 2026 draft:
 ## Main Data
 
 - `paper_apple_silicon_benchmark.csv`: original five-model paper table.
-- `measured_energy_powermetrics/`: direct M4 Pro audit.
-- `measured_energy_powermetrics_friend_m4/`: second direct M4 Pro audit.
+- `measured_energy_powermetrics/`: direct M4 Pro five-model audit.
+- `measured_energy_powermetrics_friend_m4/`: second direct M4 Pro five-model audit.
 - `measured_energy_powermetrics_m5pro/`: direct M5 Pro audit.
 - `measured_architecture_benchmark.csv`: 17-architecture latency sweep.
 - `measured_architecture_trials.csv`: raw latency sweep trials.
+- `measured_energy_powermetrics_m4pro_arch17_cpu/`: direct M4 Pro 17-architecture CPU energy audit.
 - `paper_supplemental_metrics.csv`: paper support table.
 
-The paper now compares the M4 audit, second M4 audit, and M5 audit without
-deleting the original M4 data.
+The paper now uses the M4 Pro 17-architecture `powermetrics` audit as the main
+expanded direct-energy result. The older five-model M4/M5 audits remain
+supporting evidence and are not merged into one undifferentiated device claim.
 
 ## Active Scripts
 
@@ -51,8 +53,7 @@ python3 scripts/validate_hpec_consistency.py
 Build the HPEC PDF with Tectonic:
 
 ```bash
-mkdir -p build
-/Users/romikadiam/.local/bin/tectonic --outdir build --keep-logs HPEC2026_Submission.tex
+tectonic -X compile HPEC2026_Submission.tex
 ```
 
 ## Reproduce The Mac Energy Audit
@@ -60,8 +61,11 @@ mkdir -p build
 This requires macOS and `sudo` access because `powermetrics` needs elevated
 privileges.
 
+Five-model audit:
+
 ```bash
-python3 scripts/measure_energy_powermetrics.py \
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set paper5 \
   --windows 10 \
   --window-seconds 20 \
   --sample-interval-ms 1000 \
@@ -70,18 +74,44 @@ python3 scripts/measure_energy_powermetrics.py \
   --threads 1
 ```
 
-To keep another machine separate, pass a custom output directory:
+Full 17-architecture M4 Pro CPU audit:
 
 ```bash
-python3 scripts/measure_energy_powermetrics.py \
-  --output-dir measured_energy_powermetrics_m5pro \
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_cpu \
   --windows 10 \
-  --window-seconds 20 \
+  --window-seconds 30 \
   --sample-interval-ms 1000 \
-  --warmups 10 \
+  --warmups 20 \
   --cooldown-seconds 10 \
-  --threads 1
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260523
 ```
+
+For another machine, keep the protocol fixed and change only `--output-dir`,
+for example `measured_energy_powermetrics_m1_arch17_cpu` or
+`measured_energy_powermetrics_m5pro_arch17_cpu`.
+
+## Current 17-Architecture Energy Result
+
+The expanded M4 Pro audit has 170 measured windows: 10 windows per
+architecture across 17 architecture variants, 30 seconds per window, 20 warmups
+per window, 1 Hz `powermetrics` sampling, raw logs, per-window inference
+counts, confidence intervals, and environment metadata.
+
+Across the 17 direct-energy rows:
+
+- Latency predicts measured energy with `R^2 = 0.9925`.
+- FLOPs reaches only `R^2 = 0.4008`.
+- Parameter count reaches only `R^2 = 0.0977`.
+
+The `energy_proxy_J_constant_power` and `edp_proxy_J_s_constant_power` columns
+in `measured_architecture_benchmark.csv` remain constant-power proxy fields.
+Direct energy for those architectures is stored separately in
+`measured_energy_powermetrics_m4pro_arch17_cpu/`.
 
 ## Archive
 

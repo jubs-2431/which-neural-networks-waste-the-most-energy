@@ -38,16 +38,69 @@ Outputs:
 ## Direct Energy Extension
 
 This release includes a direct repeated `powermetrics` audit for the five paper
-models under `measured_energy_powermetrics/`. To reproduce or extend it, run:
+models under `measured_energy_powermetrics/`. To reproduce that smaller audit,
+run:
 
 ```bash
-python3 scripts/measure_energy_powermetrics.py \
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set paper5 \
   --windows 10 \
   --window-seconds 20 \
   --sample-interval-ms 1000 \
   --warmups 10 \
   --cooldown-seconds 10 \
   --threads 1
+```
+
+To apply the stronger follow-up protocol and turn the 17-architecture latency
+sweep into direct energy evidence, run one matched CPU-only audit per machine:
+
+```bash
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --output-dir measured_energy_powermetrics_m4pro_arch17_cpu \
+  --windows 10 \
+  --window-seconds 30 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 10 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260523
+```
+
+For friend machines, keep every argument the same and change only the output
+directory so the artifacts remain machine-specific:
+
+```bash
+# Apple M1
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --output-dir measured_energy_powermetrics_m1_arch17_cpu \
+  --windows 10 \
+  --window-seconds 30 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 10 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260523
+
+# Apple M5 Pro
+.venv/bin/python scripts/measure_energy_powermetrics.py \
+  --model-set architecture17 \
+  --output-dir measured_energy_powermetrics_m5pro_arch17_cpu \
+  --windows 10 \
+  --window-seconds 30 \
+  --sample-interval-ms 1000 \
+  --warmups 20 \
+  --cooldown-seconds 10 \
+  --threads 1 \
+  --batch-size 1 \
+  --image-size 224 \
+  --seed 20260523
 ```
 
 This script prompts for `sudo` because macOS requires superuser privileges for

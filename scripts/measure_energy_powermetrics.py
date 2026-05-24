@@ -24,19 +24,36 @@ import torchvision.models as tv_models
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from benchmark_architectures import architecture_registry
+
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "measured_energy_powermetrics"
 DEFAULT_TRIALS = DEFAULT_OUTPUT_DIR / "measured_energy_trials.csv"
 DEFAULT_SUMMARY = DEFAULT_OUTPUT_DIR / "measured_energy_summary.csv"
 DEFAULT_ENV = DEFAULT_OUTPUT_DIR / "measurement_environment_energy.json"
 DEFAULT_RAW_DIR = DEFAULT_OUTPUT_DIR / "raw_powermetrics"
 
-MODEL_ORDER = [
+PAPER5_MODEL_ORDER = [
     "mobilenetv3_small",
     "mobilenetv2",
     "resnet18",
     "tiny_vit_5m",
     "efficientnet_b0",
 ]
+ARCHITECTURE17_MODEL_ORDER = list(architecture_registry().keys())
+MODEL_FAMILIES = {name: family for name, (_, family) in architecture_registry().items()}
+MODEL_FAMILIES.update(
+    {
+        "mobilenetv3_small": "mobilenet",
+        "mobilenetv2": "mobilenet",
+        "resnet18": "residual_cnn",
+        "tiny_vit_5m": "vision_transformer",
+        "efficientnet_b0": "efficientnet",
+    }
+)
 
 POWER_RE = re.compile(
     r"^\s*(?P<label>[A-Za-z0-9_ /()+-]*Power(?:\s*\([^)]*\))?)\s*:\s*"
@@ -120,6 +137,10 @@ def os_profile() -> dict[str, str]:
 
 
 def build_model(name: str) -> torch.nn.Module:
+    registry = architecture_registry()
+    if name in registry:
+        factory, _family = registry[name]
+        return factory()
     if name == "mobilenetv3_small":
         return tv_models.mobilenet_v3_small(weights=None)
     if name == "mobilenetv2":
@@ -131,6 +152,25 @@ def build_model(name: str) -> torch.nn.Module:
     if name == "efficientnet_b0":
         return tv_models.efficientnet_b0(weights=None)
     raise ValueError(f"unknown model: {name}")
+
+
+def selected_models(args: argparse.Namespace) -> list[str]:
+    if args.models:
+        models = [m.strip() for m in args.models.split(",") if m.strip()]
+    elif args.model_set == "paper5":
+        models = PAPER5_MODEL_ORDER[:]
+    elif args.model_set == "architecture17":
+        models = ARCHITECTURE17_MODEL_ORDER[:]
+    elif args.model_set == "paper5_plus_architecture17":
+        models = PAPER5_MODEL_ORDER + [m for m in ARCHITECTURE17_MODEL_ORDER if m not in PAPER5_MODEL_ORDER]
+    else:
+        raise ValueError(f"unknown model set: {args.model_set}")
+
+    known = set(PAPER5_MODEL_ORDER) | set(ARCHITECTURE17_MODEL_ORDER)
+    unknown = [m for m in models if m not in known]
+    if unknown:
+        raise ValueError(f"unknown model(s): {', '.join(unknown)}")
+    return models
 
 
 def normalize_power_label(label: str) -> str | None:
@@ -246,6 +286,7 @@ def run_powermetrics_window(
 
     return {
         "model": model_name,
+        "family": MODEL_FAMILIES.get(model_name, ""),
         "trial": trial,
         "start_utc": start_utc,
         "end_utc": end_utc,
@@ -304,9 +345,9 @@ def ci95(values: list[float]) -> tuple[float, float, float]:
     return mean - tcrit * sem, mean + tcrit * sem, sem
 
 
-def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def summarize(rows: list[dict[str, Any]], model_order: list[str]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    for model in MODEL_ORDER:
+    for model in model_order:
         group = [r for r in rows if r["model"] == model]
         energies = finite_floats(group, "energy_J_per_inference")
         latencies = finite_floats(group, "latency_ms_per_inference")
@@ -316,6 +357,7 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         out.append(
             {
                 "model": model,
+                "family": MODEL_FAMILIES.get(model, ""),
                 "n_windows": len(group),
                 "parsed_windows": len(energies),
                 "total_inferences": sum(infs),
@@ -345,7 +387,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
-def environment_metadata(args: argparse.Namespace, powermetrics_template: list[str]) -> dict[str, Any]:
+def environment_metadata(args: argparse.Namespace, powermetrics_template: list[str], model_order: list[str]) -> dict[str, Any]:
     git_status = run_cmd(["git", "status", "--porcelain"])
     return {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -363,7 +405,9 @@ def environment_metadata(args: argparse.Namespace, powermetrics_template: list[s
         "device": "cpu",
         "dtype": "float32",
         "input_shape": [args.batch_size, 3, args.image_size, args.image_size],
-        "models": MODEL_ORDER,
+        "model_set": args.model_set,
+        "models": model_order,
+        "model_families": {name: MODEL_FAMILIES.get(name, "") for name in model_order},
         "windows_per_model": args.windows,
         "window_seconds": args.window_seconds,
         "sample_interval_ms": args.sample_interval_ms,
@@ -373,6 +417,15 @@ def environment_metadata(args: argparse.Namespace, powermetrics_template: list[s
         "random_seed": args.seed,
         "powermetrics_command_template": powermetrics_template,
         "powermetrics_note": "Run by subprocess as sudo; raw text logs are stored under raw_powermetrics.",
+        "evidence_policy": {
+            "raw_logs_retained": True,
+            "per_window_inference_counts_retained": True,
+            "environment_metadata_retained": True,
+            "direct_energy_source": "powermetrics",
+            "backend": "CPU-only PyTorch",
+            "backend_scope_note": "CPU-only collection controls runtime variability; GPU, Metal, ANE, and quantized paths require separate matched runs.",
+            "sampling_note": "1 Hz powermetrics is coarse for sub-100 ms inference, so each row averages many inferences inside a measurement window.",
+        },
         "hardware_profile": hardware_profile(),
         "os_profile": os_profile(),
         "uname": run_cmd(["uname", "-a"]),
@@ -387,6 +440,13 @@ def parse_args() -> argparse.Namespace:
         description="Collect repeated Apple-Silicon inference-energy windows with powermetrics."
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument(
+        "--model-set",
+        choices=["paper5", "architecture17", "paper5_plus_architecture17"],
+        default="paper5",
+        help="which benchmark model list to measure",
+    )
+    parser.add_argument("--models", default="", help="optional comma-separated explicit model list")
     parser.add_argument("--windows", type=int, default=10, help="measurement windows per model")
     parser.add_argument("--window-seconds", type=float, default=20.0)
     parser.add_argument("--sample-interval-ms", type=int, default=1000)
@@ -403,7 +463,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    args.output_dir = args.output_dir.expanduser().resolve()
+    args.output_dir = args.output_dir.expanduser()
+    if not args.output_dir.is_absolute():
+        args.output_dir = PROJECT_ROOT / args.output_dir
+    args.output_dir = args.output_dir.resolve()
+    model_order = selected_models(args)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = args.output_dir / "raw_powermetrics"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -422,12 +486,12 @@ def main() -> None:
     rng = random.Random(args.seed)
     sample = torch.randn(args.batch_size, 3, args.image_size, args.image_size)
 
-    print("[load] building models")
-    models = {name: build_model(name).eval().cpu() for name in MODEL_ORDER}
+    print(f"[load] building {len(model_order)} models from model_set={args.model_set}")
+    models = {name: build_model(name).eval().cpu() for name in model_order}
 
     schedule: list[tuple[int, str]] = []
     for repeat in range(1, args.windows + 1):
-        order = MODEL_ORDER[:]
+        order = model_order[:]
         rng.shuffle(order)
         schedule.extend((repeat, name) for name in order)
 
@@ -446,7 +510,7 @@ def main() -> None:
         "<raw_log_path>",
     ]
     env_path.write_text(
-        json.dumps(environment_metadata(args, powermetrics_template), indent=2, sort_keys=True) + "\n",
+        json.dumps(environment_metadata(args, powermetrics_template, model_order), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -460,7 +524,7 @@ def main() -> None:
         row["schedule_index"] = idx
         rows.append(row)
         write_csv(trials_path, rows)
-        write_csv(summary_path, summarize(rows))
+        write_csv(summary_path, summarize(rows, model_order))
         print(
             "    energy={energy_J_per_inference} J, latency={latency_ms_per_inference} ms, "
             "n={inferences}, samples={parsed_samples}, raw={raw_powermetrics_log}".format(**row)
@@ -470,7 +534,7 @@ def main() -> None:
             time.sleep(args.cooldown_seconds)
 
     write_csv(trials_path, rows)
-    write_csv(summary_path, summarize(rows))
+    write_csv(summary_path, summarize(rows, model_order))
     print(f"[write] {trials_path}")
     print(f"[write] {summary_path}")
     print(f"[write] {env_path}")

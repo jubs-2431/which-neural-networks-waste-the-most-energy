@@ -138,6 +138,44 @@ If you add this to the paper, the safest framing is:
   stronger architecture baselines, but its energy/EDP fields are proxy values
   unless matching power traces are collected.
 
+## Direct 17-Architecture M4 Pro Energy Audit Added
+
+Files:
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measured_energy_trials.csv`
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measured_energy_summary.csv`
+- `measured_energy_powermetrics_m4pro_arch17_cpu/measurement_environment_energy.json`
+- `measured_energy_powermetrics_m4pro_arch17_cpu/raw_powermetrics/`
+
+What is directly measured:
+- The same 17 architecture variants from the expanded architecture sweep.
+- 10 repeated energy windows per architecture, 170 windows total.
+- 30 seconds per window with `powermetrics` sampled at 1 Hz.
+- CPU-only float32 PyTorch inference with one PyTorch CPU thread.
+- 20 warm-up inferences before each window and 10 seconds cooldown between windows.
+- Randomized architecture order within each repeat using seed `20260523`.
+
+Measurement environment:
+- MacBook Pro Mac16,8, Apple M4 Pro, 24 GB RAM.
+- macOS 26.2 build 25C56.
+- Python 3.9.6.
+- PyTorch 2.8.0, torchvision 0.23.0, timm 1.0.24.
+- Full metadata and the `powermetrics` command template are in
+  `measured_energy_powermetrics_m4pro_arch17_cpu/measurement_environment_energy.json`.
+
+Headline result:
+- Across the 17 direct-energy architecture means, latency predicts measured
+  energy with `R^2 = 0.9925`.
+- FLOPs is weaker at `R^2 = 0.4008`.
+- Parameter count is weaker still at `R^2 = 0.0977`.
+
+Updated wording:
+- The original 17-architecture CSV still contains constant-power proxy energy
+  fields, but the new M4 Pro directory now provides matching direct
+  `powermetrics` energy measurements for those architectures.
+- Do not merge this M4 Pro CPU-only table with GPU, Metal, ANE, Windows, or
+  quantized backends unless those are collected under matched protocols and
+  reported as separate backend/device conditions.
+
 ## Direct Repeated Energy Audit Added in This Release
 
 Files:

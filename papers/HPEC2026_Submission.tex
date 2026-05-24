@@ -1,18 +1,9 @@
 \documentclass[conference]{IEEEtran}
 
-\usepackage{cite}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath}
 \usepackage{booktabs}
-\usepackage{array}
-\usepackage{siunitx}
-\usepackage{pgfplots}
+\usepackage{cite}
 \usepackage{url}
-\usepackage[hidelinks]{hyperref}
-
-\pgfplotsset{compat=1.18}
-\sisetup{round-mode=places,round-precision=3}
-\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
-\emergencystretch=2em
 
 \begin{document}
 
@@ -24,12 +15,6 @@
 University of North Texas\\
 Denton, TX, USA\\
 aryanshah.2431@gmail.com}
-\and
-\IEEEauthorblockN{Romir Kadiam}
-\IEEEauthorblockA{Texas Academy of Mathematics and Science\\
-University of North Texas\\
-Denton, TX, USA\\
-romirkadiam123@gmail.com}
 }
 
 \maketitle
@@ -37,22 +22,23 @@ romirkadiam123@gmail.com}
 \begin{abstract}
 Energy is a deployment constraint for edge-AI systems, but neural-network
 efficiency is still often discussed using architecture-level proxies such as
-FLOPs, parameter count, and model size. We benchmark five image-classification
-architectures on Apple Silicon under CPU-only PyTorch inference and compare
-measured per-inference energy, latency, FLOPs, and Energy-Delay Product (EDP).
-In the primary five-model mean table, latency almost completely explains
-between-model energy variation ($R^2=0.99999$), while FLOPs explains almost
-none ($R^2=0.00008$). EfficientNet-B0 consumes $2.65\times$ the energy of
-ResNet-18 despite having $4.7\times$ fewer FLOPs. Separate 50-window
-\texttt{powermetrics} audits on Apple M1, Apple M4 Pro, and Apple M5 Pro
-preserve the qualitative pattern: latency remains strongly predictive of
-measured energy ($R^2=0.996$, $0.980$, and $0.975$), while FLOPs remains
-uninformative ($R^2=0.001$, $0.001$, and $0.005$). We also
-summarize a residualized conditional WGAN-GP used only as supplemental
-support for sparse repeated-trial analysis. The results support a practical
-benchmarking lesson for embedded and edge inference: direct latency and power
-measurement are more informative than FLOP counts alone under a fixed runtime
-and input shape.
+FLOPs, parameter count, and model size. We first reproduce a five-model
+Apple-Silicon CPU-only PyTorch comparison, then add a new direct
+\texttt{powermetrics} audit over 17 architecture variants on an Apple M4 Pro.
+The new audit contains 170 measured windows, 30 seconds per window, raw power
+logs, per-window inference counts, confidence intervals, and full environment
+metadata. Across the 17 directly measured architectures, latency explains
+nearly all between-architecture energy variation ($R^2=0.9925$), while FLOPs
+is much weaker ($R^2=0.4008$) and parameter count is weaker still
+($R^2=0.0977$). The expanded data preserve the central five-model result:
+runtime behavior, not nominal arithmetic count, determines energy ordering
+under this fixed CPU backend. For example, ConvNeXt-micro has only 0.448
+GFLOPs but consumes slightly more energy than a 3.414-GFLOP residual CNN
+because both run at roughly the same latency. A residualized conditional
+WGAN-GP is retained only as supplemental sparse-trial modeling. The results
+support a practical benchmarking rule for edge inference: report direct
+latency and auditable power traces under the deployment runtime instead of
+ranking models by FLOP count alone.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -67,8 +53,8 @@ inference under strict energy and latency budgets. Model selection is often
 guided by FLOPs, parameter count, or model size because these quantities are
 easy to compute before deployment. They are useful descriptors, but they do
 not directly measure wall-clock work, memory traffic, kernel efficiency, or
-the behavior of a specific runtime on a specific processor
-\cite{horowitz2014,eyeriss2017,hardwareaware2019}.
+the behavior of a specific runtime on a specific processor \cite{horowitz2014,
+eyeriss2016, mobilenetv3}.
 
 This paper studies a narrow but practical question: for a fixed Apple Silicon
 CPU-only PyTorch runtime, which common architecture proxy best tracks measured
@@ -79,40 +65,36 @@ nominal arithmetic count of the neural network.
 
 The contributions are:
 \begin{itemize}
-\item A five-architecture Apple-Silicon inference-energy benchmark comparing
-MobileNetV3-Small, MobileNetV2, ResNet-18, Tiny-ViT-5M, and EfficientNet-B0.
-\item Direct 50-window \texttt{powermetrics} audits from Apple M1, Apple
-M4 Pro, and Apple M5 Pro, with raw logs, per-window inference counts,
-confidence intervals, and environment metadata.
-\item A compact analysis showing that latency is a much stronger predictor of
-energy than FLOPs in the original mean table and in the repeated audits.
-\item A scoped synthetic-trial modeling note: residualized conditional GANs
-can support exploratory repeated-trial analysis, but they should not replace
-independent power measurements.
+    \item A five-architecture Apple-Silicon inference-energy benchmark
+    comparing MobileNetV3-Small, MobileNetV2, ResNet-18, Tiny-ViT-5M, and
+    EfficientNet-B0.
+    \item A new 17-architecture Apple M4 Pro direct-energy audit with 170
+    \texttt{powermetrics} windows, raw logs, per-window inference counts,
+    confidence intervals, and environment metadata.
+    \item A compact analysis showing that latency is a much stronger predictor
+    of energy than FLOPs in both the original five-model table and the
+    expanded 17-architecture direct-energy table.
+    \item A scoped synthetic-trial modeling note: residualized conditional
+    GANs can support exploratory repeated-trial analysis, but they should not
+    replace independent power measurements.
 \end{itemize}
-
-The goal is not to crown one architecture as universally best. The benchmark
-is fixed-input and fixed-runtime. It asks what happens when common
-architecture families are deployed through the same CPU backend, and whether
-the usual complexity proxies preserve the measured energy ordering.
 
 \section{Related Work}
 
 Efficient neural-network design has produced architectures such as MobileNet,
 MobileNetV2, MobileNetV3, EfficientNet, SqueezeNet, and ShuffleNet, which
 reduce arithmetic through depthwise separable convolutions, inverted
-residuals, compound scaling, and channel grouping
-\cite{mobilenet2017,mobilenetv22018,mobilenetv32019,efficientnet2019,
-squeezenet2016,shufflenet2018}. These designs often improve accuracy/FLOP
-tradeoffs, but hardware energy depends on more than FLOPs.
+residuals, compound scaling, and channel grouping \cite{mobilenet,
+mobilenetv2, mobilenetv3, efficientnet, squeezenet, shufflenet}. These
+designs often improve accuracy/FLOP tradeoffs, but hardware energy depends on
+more than FLOPs.
 
 Prior systems work shows that data movement and memory hierarchy behavior can
-dominate arithmetic energy \cite{horowitz2014,eyeriss2017}. Hardware-aware
+dominate arithmetic energy \cite{horowitz2014, eyeriss2016}. Hardware-aware
 model design similarly emphasizes that latency and hardware utilization can
-diverge from FLOP counts \cite{hardwareaware2019,mnasnet2019,fbnet2019}.
-Green AI and ML systems benchmarking further motivate reporting measured
-deployment costs rather than abstract complexity alone
-\cite{greenai2020,strubell2019,patterson2021,mlperf2020}. This paper adds a
+diverge from FLOP counts \cite{mobilenetv3, efficientnet}. Green AI and ML
+systems benchmarking motivate reporting measured deployment costs rather than
+abstract complexity alone \cite{greenai, carbontracker}. This paper adds a
 small, auditable Apple-Silicon case study centered on per-inference energy.
 
 \section{Methodology}
@@ -124,631 +106,330 @@ shape $1\times3\times224\times224$. CPU-only execution was chosen to isolate a
 portable runtime path and avoid Neural Engine or Metal scheduling effects. It
 does not claim to be the most energy-efficient Apple Silicon backend.
 
-The repository contains four Apple-Silicon energy sources. The first is the
-paper-aligned original five-model mean table, which reports one mean
-latency and one mean energy per model from Apple-Silicon CPU inference
-measured with \texttt{powermetrics} at 1 Hz. The raw logs for that original
-mean table are unavailable, so we do not infer confidence intervals for it.
-The other sources are later direct audits: one Apple M1 run, one Apple M4 Pro
-run, and one Apple M5 Pro run. Each audit uses 10 20-second windows per
-model, 50 windows total, 1 Hz \texttt{powermetrics} sampling, 10 warmup
-inferences, and randomized model order.
+The repository contains multiple Apple-Silicon energy sources. The first is the
+paper-aligned original five-model mean table, which reports one mean latency
+and one mean energy per model from Apple-Silicon CPU inference measured with
+\texttt{powermetrics} at 1 Hz. The raw logs for that original table are
+unavailable, and the local artifact does not identify it as M1, so we do not
+infer confidence intervals or a specific chip generation for it.
 
-\begin{table}[t]
+The main new evidence is a 17-architecture Apple M4 Pro audit collected in
+\texttt{measured\_energy\_powermetrics\_m4pro\_arch17\_cpu}. It uses 10
+30-second windows per architecture, 170 measured windows total, 1 Hz
+\texttt{powermetrics} sampling, 20 warmup inferences before each window,
+randomized architecture order, one CPU thread, batch size 1, and input shape
+$1\times3\times224\times224$. The audit preserves raw \texttt{powermetrics}
+text logs, per-window inference counts, per-window energy estimates, summary
+statistics, confidence intervals, and a JSON environment record. Earlier
+five-model M4 and retained M5 summaries are treated as supporting audits, not
+merged with the new 17-architecture table.
+
+\begin{table*}[t]
 \centering
-\caption{Direct repeated energy-audit environments.}
-\label{tab:env}
-\scriptsize
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{llll}
+\caption{Direct repeated Apple-Silicon energy-audit environments.}
+\label{tab:environment}
+\begin{tabular}{lll}
 \toprule
-Audit & Chip/RAM & OS & Python/PyTorch \\
+Component & New 17-architecture M4 Pro audit & Retained M5 Pro audit \\
 \midrule
-M1 & Apple M1 / 8 GB & 26.3 & 3.12.1 / 2.12.0 \\
-M4 & M4 Pro / 24 GB & 26.2 & 3.9.6 / 2.8.0 \\
-M5 & M5 Pro / 24 GB & 26.4.1 & 3.12.1 / 2.3.1 \\
+Device & MacBook Pro Mac16,8 & MacBook Pro Mac17,9 \\
+Chip & Apple M4 Pro, 12 cores & Apple M5 Pro, 15 cores \\
+Memory & 24 GB RAM & 24 GB RAM \\
+OS & macOS 26.2 build 25C56 & macOS 26.4.1 \\
+Python/PyTorch & 3.9.6 / 2.8.0 & 3.12.1 / 2.3.1 \\
+torchvision/timm & 0.23.0 / 1.0.24 & 0.18.1 / 1.0.24 \\
+Threads/input & 1 thread, batch 1 & 1 thread, batch 1 \\
+Power logging & \texttt{powermetrics}, 1 Hz & \texttt{powermetrics}, 1 Hz \\
+Protocol & 10 windows/model, 30 s/window & 10 windows/model, 20 s/window \\
 \bottomrule
 \end{tabular}
-\end{table}
-
-The original mean table and the direct audits are intentionally kept separate.
-The first supports the main comparison used in the earlier manuscript; the
-later audits supply raw logs and repeated-window uncertainty for newer local
-environments. All three direct audits use one CPU thread, batch size 1,
-20-second windows, and the same randomized model order seed. Agreement among
-them is therefore treated as robustness of the qualitative pattern rather than
-identity of absolute energy values.
+\end{table*}
 
 \subsection{Metrics}
 
-We report per-inference energy $E$ in joules, latency $L$ in milliseconds,
-and average power $P=1000E/L$. Because power is sampled once per second,
-energy is interpreted as window-level energy divided by the number of
-inferences completed in the window. We also report Energy-Delay Product
-(EDP), a standard low-power metric:
+We report per-inference energy $E$ in joules, latency $L$ in milliseconds, and
+average power $P=1000E/L$. Because power is sampled once per second, energy is
+interpreted as window-level energy divided by the number of inferences
+completed in the window. We also report Energy-Delay Product (EDP),
 \begin{equation}
-\mathrm{EDP}=E\cdot L .
+    \mathrm{EDP} = E \cdot L.
 \end{equation}
 EDP is not accuracy-normalized; it measures energy-latency cost for fixed
 input-shape inference.
 
 \subsection{Benchmark Procedure}
 
-The measurement workflow is designed to separate model execution from power-log
-parsing. Each model is instantiated once, switched to evaluation mode, and run
-with gradients disabled. Warmup inferences are discarded so that module loading
-and one-time kernel setup do not dominate short windows. During each measured
-window, the script repeatedly executes forward passes until the window expires,
-records the number of completed inferences, and then divides the package-energy
-estimate for that same window by the inference count. The raw
-\texttt{powermetrics} output is retained, so the summary CSV is not the only
-source of evidence.
+Each model is instantiated once, switched to evaluation mode, and run with
+gradients disabled. Warmup inferences are discarded so that module loading and
+one-time setup do not dominate short windows. During each measured window, the
+script repeatedly executes forward passes until the window expires, records
+the number of completed inferences, and divides the package-energy estimate
+for that same window by the inference count. Raw \texttt{powermetrics} output
+is retained, so the summary CSV is not the only source of evidence.
 
 This windowed procedure is deliberately conservative for sub-100 ms inference.
-It does not try to attribute a single instantaneous power sample to one forward
-pass. Instead, it measures many repeated inferences under a controlled loop and
-reports the average energy paid by that loop. This matches the operating mode of
-many embedded inference services, where steady-state throughput and energy per
-request are more relevant than the energy of a single isolated call.
-
-Table~\ref{tab:checks} lists the main validity checks used when interpreting
-the benchmark. These checks are simple, but they make the artifact easier to
-audit: the paper distinguishes measured quantities from proxies, reports the
-exact hardware and software stack, and avoids using synthetic samples as
-physical measurements.
-
-\begin{table}[t]
-\centering
-\caption{Benchmark validity checks used in the HPEC artifact.}
-\label{tab:checks}
-\small
-\begin{tabular}{L{0.37\linewidth}L{0.53\linewidth}}
-\toprule
-Risk & Mitigation \\
-\midrule
-Startup overhead & discard warmup inferences before each measured window \\
-Order effects & randomize model order with a recorded seed \\
-Power-log ambiguity & retain raw \texttt{powermetrics} logs and window counts \\
-Proxy confusion & label latency-only sweep energy as proxy and exclude it from direct-energy claims \\
-Synthetic overclaiming & evaluate WGAN-GP separately and treat it as supplemental only \\
-\bottomrule
-\end{tabular}
-\end{table}
+It does not try to attribute a single instantaneous power sample to one
+forward pass. Instead, it measures many repeated inferences under a controlled
+loop and reports the average energy paid by that loop.
 
 \subsection{Supplemental Synthetic Modeling}
 
 The repository includes a conditional WGAN-GP pipeline used to explore
 synthetic repeated trials under sparse measurement budgets. An initial
 multi-device raw-scale model mode-collapsed. The revised model uses
-within-combination residuals: for each device/model combination $c$ and
-feature $x$, the training value is
+within-combination residuals:
 \begin{equation}
-\tilde{x}=\mathrm{clip}\left((x-\mu_c)/\sigma_c,-3,3\right).
+    \tilde{x} = \mathrm{clip}\left((x-\mu_c)/\sigma_c,-3,3\right).
 \end{equation}
 Generated residuals are mapped back using the same $\mu_c$ and $\sigma_c$.
-This synthetic component is treated as supplemental. It can reproduce grounded
-means and rankings, but its spreads are not a substitute for held-out measured
-trial-level energy data.
-
-The paper also includes a 17-architecture CPU-only latency sweep. That sweep
-has 30 measured latency trials per architecture and exact runtime metadata,
-but its energy and EDP columns are constant-power proxies rather than direct
-energy measurements. We use it only to contextualize latency behavior across
-additional small architectures; all energy claims in this paper come from
-the five-model measured energy tables.
+This synthetic component is treated as supplemental. It can reproduce
+grounded means and rankings, but its spreads are not a substitute for
+held-out measured trial-level energy data.
 
 \section{Results}
 
-Table~\ref{tab:primary} summarizes the five-model paper-aligned original
-mean table.
-The key result is that energy follows latency rather than FLOPs. EfficientNet
-B0 has only 0.39 GFLOPs, but it has the largest latency and energy. ResNet-18
-has 1.82 GFLOPs, yet consumes less than half the energy of EfficientNet-B0 in
-this setup.
+Table~\ref{tab:original} summarizes the five-model paper-aligned original mean
+table. The key result is that energy follows latency rather than FLOPs.
+EfficientNet-B0 has only 0.39 GFLOPs, but it has the largest latency and
+energy. ResNet-18 has 1.82 GFLOPs, yet consumes less than half the energy of
+EfficientNet-B0 in this setup.
 
 \begin{table}[t]
 \centering
-\caption{Paper-aligned original five-model mean table. EDP is
-lower-is-better and is computed from measured energy and latency.}
-\label{tab:primary}
-\small
+\caption{Paper-aligned original five-model mean table. EDP is computed from
+measured energy and latency.}
+\label{tab:original}
 \begin{tabular}{lrrrr}
 \toprule
-Model & FLOPs & Lat. & Energy & EDP\\
- & (G) & (ms) & (J) & (J$\cdot$ms)\\
+Model & FLOPs & Lat. & Energy & EDP \\
+ & (G) & (ms) & (J) & (J ms) \\
 \midrule
-MobileNetV3-S & 0.22 & 15.14 & 0.080 & 1.211\\
-MobileNetV2 & 0.30 & 20.07 & 0.106 & 2.127\\
-ResNet-18 & 1.82 & 20.68 & 0.110 & 2.275\\
-Tiny-ViT-5M & 1.30 & 41.33 & 0.219 & 9.051\\
-EfficientNet-B0 & 0.39 & 55.08 & 0.292 & 16.083\\
+MobileNetV3-S & 0.22 & 15.14 & 0.080 & 1.211 \\
+MobileNetV2 & 0.30 & 20.07 & 0.106 & 2.127 \\
+ResNet-18 & 1.82 & 20.68 & 0.110 & 2.275 \\
+Tiny-ViT-5M & 1.30 & 41.33 & 0.219 & 9.051 \\
+EfficientNet-B0 & 0.39 & 55.08 & 0.292 & 16.083 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-The ordering is monotone in latency and not monotone in FLOPs. MobileNetV3
-Small is the lowest-energy model and EfficientNet-B0 is the highest-energy
-model. ResNet-18 is the clearest counterexample to a FLOP-based story: it has
-the largest FLOP count in the set but remains close to MobileNetV2 in latency
-and energy. EfficientNet-B0 has substantially fewer FLOPs than ResNet-18, yet
-it takes longer and consumes more energy.
 
 \subsection{Predictor Analysis}
 
 We fit univariate linear models predicting energy from latency, FLOPs, and
-parameter count. Table~\ref{tab:predictors} shows that latency explains nearly
-all measured energy variation in the five-model mean table, while FLOPs and
-parameters do not. Leave-one-out checks preserve the same qualitative result:
-latency $R^2$ ranges from 0.99997 to 0.999999, while FLOPs ranges from 0.028
-to 0.207.
+parameter count in the original mean table. Latency explains nearly all
+between-model energy variation ($R^2=0.99999$), while FLOPs explains almost
+none ($R^2=0.00008$). Leave-one-out checks preserve the same qualitative
+result: latency $R^2$ remains above 0.99997, while FLOPs remains weak.
 
-\begin{table}[t]
-\centering
-\caption{Univariate predictors of energy in the paper-aligned mean table
-($n=5$).}
-\label{tab:predictors}
-\small
-\begin{tabular}{lrr}
-\toprule
-Predictor & $R^2$ & Pearson $r$\\
-\midrule
-Latency (ms) & 0.99999 & 0.99999\\
-FLOPs (G) & 0.00008 & -0.009\\
-Parameters (M) & 0.0547 & 0.234\\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsection{Seventeen-Architecture M4 Pro Energy Audit}
 
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.95\linewidth,
-    height=4.2cm,
-    xlabel={Latency (ms)},
-    ylabel={Energy (J)},
-    xmin=0,
-    ymin=0,
-    grid=both,
-    tick label style={font=\scriptsize},
-    label style={font=\scriptsize},
-]
-\addplot[only marks,mark=*,mark size=2.2pt,color=blue!70!black] coordinates {
-    (15.14,0.080)
-    (20.07,0.106)
-    (20.68,0.110)
-    (41.33,0.219)
-    (55.08,0.292)
-};
-\end{axis}
-\end{tikzpicture}
-\caption{Measured energy versus latency in the five-model mean table.
-Latency gives $R^2=0.99999$.}
-\label{fig:energy-latency}
-\end{figure}
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.95\linewidth,
-    height=4.2cm,
-    xlabel={FLOPs (G)},
-    ylabel={Energy (J)},
-    xmin=0,
-    ymin=0,
-    grid=both,
-    tick label style={font=\scriptsize},
-    label style={font=\scriptsize},
-]
-\addplot[only marks,mark=square*,mark size=2.2pt,color=red!70!black] coordinates {
-    (0.22,0.080)
-    (0.30,0.106)
-    (1.82,0.110)
-    (1.30,0.219)
-    (0.39,0.292)
-};
-\end{axis}
-\end{tikzpicture}
-\caption{Measured energy versus FLOPs in the same table. FLOPs gives
-$R^2=0.00008$ and ranks some models in the wrong direction.}
-\label{fig:energy-flops}
-\end{figure}
-
-\subsection{Repeated Energy Audits}
-
-Figure~\ref{fig:audit-energy} reports
-separate direct \texttt{powermetrics} audits on
-Apple M1, M4 Pro, and M5 Pro systems. Absolute values differ from the original
-paper-aligned mean table because the audits were collected later on specific
-local environments. They are therefore used as repeatability evidence, not as
-retroactive uncertainty estimates for the original table. Still, the same
-pattern holds: latency explains most between-model energy variation
-($R^2=0.996$ on M1, $0.980$ on M4 Pro, and $0.975$ on M5 Pro), while FLOPs
-remains weak ($R^2=0.001$, $0.001$, and $0.005$).
-\begin{figure*}[t]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.92\textwidth,
-    height=5.4cm,
-    ybar,
-    bar width=7pt,
-    ymin=0,
-    ymax=0.36,
-    ylabel={Energy per inference (J)},
-    symbolic x coords={MNetV3,MNetV2,ResNet18,TinyViT,EffB0},
-    xtick=data,
-    enlarge x limits=0.13,
-    grid=both,
-    major grid style={draw=gray!25},
-    tick label style={font=\scriptsize},
-    label style={font=\small},
-    legend style={
-        at={(0.5,1.08)},
-        anchor=south,
-        legend columns=3,
-        draw=none,
-        font=\scriptsize
-    },
-]
-\addplot+[fill=blue!55!black,draw=blue!70!black] coordinates {
-    (MNetV3,0.067) (MNetV2,0.084) (ResNet18,0.093)
-    (TinyViT,0.158) (EffB0,0.231)
-};
-\addplot+[fill=orange!75!black,draw=orange!85!black] coordinates {
-    (MNetV3,0.061) (MNetV2,0.066) (ResNet18,0.074)
-    (TinyViT,0.176) (EffB0,0.206)
-};
-\addplot+[fill=green!45!black,draw=green!60!black] coordinates {
-    (MNetV3,0.080) (MNetV2,0.116) (ResNet18,0.129)
-    (TinyViT,0.270) (EffB0,0.329)
-};
-\legend{M1,M4 Pro,M5 Pro}
-\end{axis}
-\end{tikzpicture}
-\caption{Mean per-inference energy across the three 50-window
-\texttt{powermetrics} audits. The plotted values come directly from the
-summary CSVs; the repository retains the corresponding confidence intervals,
-latencies, power estimates, per-window trials, and raw logs.}
-\label{fig:audit-energy}
-\end{figure*}
-
-The repeated audits expose measurement variability that the original mean
-table cannot provide. The M1 audit is slower but lower-power than the newer
-Pro-chip audits, so its energy is competitive on several models despite higher
-latency. The M5 Pro audit has higher measured average power than the M4 Pro
-audit under this CPU-only PyTorch configuration, so its per-inference energies
-are often higher even when latency is similar. This should not be read as a
-universal hardware-efficiency ordering: the machines also differ in run
-timing, OS version, Python version, and PyTorch version. What is stable across
-the audits is the architecture ranking:
-MobileNetV3-Small, MobileNetV2, and ResNet-18 form a low-energy group, while
-Tiny-ViT-5M and EfficientNet-B0 are higher-energy under this CPU runtime.
-
-\subsection{Expanded Latency Sweep}
-
-The 17-architecture latency sweep broadens the performance context without
-making new direct energy claims. Table~\ref{tab:latency-sweep} spans very
-small MLPs, patch mixers, plain CNNs, depthwise CNNs, grouped convolutions,
-residual CNNs, attention-gated CNNs, and ConvNeXt-like blocks. The sweep shows
-that latency can vary by orders of magnitude even when FLOPs are small, which
-is consistent with the direct-energy finding that runtime behavior matters.
+Table~\ref{tab:m4arch17} reports the new direct M4 Pro audit. Each architecture
+has 10 measured 30-second windows, with raw logs and per-window rows stored in
+the artifact directory. Confidence intervals are Student-$t$ 95\% intervals
+over the 10 measured windows. This table replaces the earlier latency-only
+17-architecture sweep as the main expanded result: the same architecture
+families now have direct \texttt{powermetrics} energy measurements rather than
+constant-power energy proxies.
 
 \begin{table*}[t]
 \centering
-\caption{Full 17-architecture direct latency sweep. Energy values in
-that sweep are excluded here because they are constant-power proxies, not
-direct \texttt{powermetrics} measurements.}
-\label{tab:latency-sweep}
-\scriptsize
-\begin{tabular}{llrrrrr}
+\caption{New direct \texttt{powermetrics} audit over 17 architecture variants on Apple M4 Pro. Rows are sorted by measured energy.}
+\label{tab:m4arch17}
+\small
+\begin{tabular}{lrrrr}
 \toprule
-Architecture & Family & Params & FLOPs & Lat. & P95 Lat. & CV\\
- & & (M) & (G) & (ms) & (ms) & \\
+Architecture & FLOPs & Lat. & Energy & 95\% CI \\
+ & (G) & (ms) & (J) & (J) \\
 \midrule
-Global avg. MLP tiny & MLP & 0.065 & 0.0001 & 0.026 & 0.026 & 0.013\\
-Patch mixer small & Mixer & 0.224 & 0.0419 & 0.465 & 0.528 & 0.071\\
-Patch mixer medium & Mixer & 0.435 & 0.1013 & 0.792 & 0.866 & 0.056\\
-CNN tiny 2conv & Plain CNN & 0.038 & 0.0398 & 0.793 & 0.836 & 0.029\\
-CNN small 4conv & Plain CNN & 0.112 & 0.1699 & 1.306 & 1.375 & 0.032\\
-Depthwise small & Depthwise CNN & 0.053 & 0.0233 & 1.446 & 1.508 & 0.027\\
-Grouped conv CNN & Grouped CNN & 0.154 & 0.1713 & 1.924 & 2.137 & 0.064\\
-Depthwise medium & Depthwise CNN & 0.112 & 0.0501 & 1.998 & 2.111 & 0.051\\
-Attention gate CNN & Attention CNN & 0.179 & 0.5260 & 2.373 & 2.428 & 0.014\\
-CNN medium 6conv & Plain CNN & 0.482 & 0.7463 & 2.416 & 2.497 & 0.020\\
-Squeeze-expand CNN & Squeeze CNN & 0.173 & 0.5967 & 3.114 & 3.219 & 0.016\\
-Residual CNN small & Residual CNN & 0.177 & 1.0623 & 3.331 & 3.484 & 0.038\\
-Inverted residual small & Inverted residual & 0.080 & 0.2792 & 3.366 & 3.463 & 0.019\\
-Bottleneck residual & Bottleneck CNN & 0.227 & 0.7244 & 3.480 & 3.639 & 0.026\\
-Inverted residual wide & Inverted residual & 0.167 & 0.8118 & 6.739 & 6.858 & 0.014\\
-Residual CNN medium & Residual CNN & 0.514 & 3.4142 & 6.848 & 8.531 & 0.173\\
-ConvNeXt micro & ConvNeXt-like & 0.240 & 0.4482 & 7.554 & 7.793 & 0.022\\
+global\_avg\_mlp\_tiny & 0.000 & 0.021 & 0.00012 & [0.0001,0.0001] \\
+patch\_mixer\_small & 0.042 & 0.431 & 0.00284 & [0.0025,0.0032] \\
+cnn\_tiny\_2conv & 0.040 & 0.770 & 0.00502 & [0.0045,0.0055] \\
+patch\_mixer\_medium & 0.101 & 0.741 & 0.00534 & [0.0044,0.0063] \\
+depthwise\_small & 0.023 & 1.289 & 0.00797 & [0.0074,0.0086] \\
+cnn\_small\_4conv & 0.170 & 1.306 & 0.00955 & [0.0078,0.0113] \\
+grouped\_conv\_cnn & 0.171 & 1.746 & 0.01120 & [0.0103,0.0121] \\
+depthwise\_medium & 0.050 & 1.904 & 0.01328 & [0.0113,0.0153] \\
+cnn\_medium\_6conv & 0.746 & 2.414 & 0.01587 & [0.0129,0.0189] \\
+attention\_gate\_cnn & 0.526 & 2.390 & 0.01663 & [0.0145,0.0187] \\
+squeeze\_expand\_cnn & 0.597 & 3.089 & 0.01955 & [0.0185,0.0206] \\
+residual\_cnn\_small & 1.062 & 3.434 & 0.02231 & [0.0197,0.0249] \\
+bottleneck\_residual & 0.724 & 3.459 & 0.02252 & [0.0203,0.0248] \\
+inverted\_residual\_small & 0.279 & 3.311 & 0.02313 & [0.0202,0.0261] \\
+residual\_cnn\_medium & 3.414 & 6.757 & 0.04259 & [0.0387,0.0464] \\
+convnext\_micro & 0.448 & 6.832 & 0.04417 & [0.0418,0.0466] \\
+inverted\_residual\_wide & 0.812 & 6.811 & 0.04898 & [0.0392,0.0588] \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-This sweep is useful for systems interpretation. For example, the depthwise
-small model has fewer FLOPs than a tiny two-convolution CNN but higher latency,
-which is consistent with lower arithmetic intensity and less efficient CPU
-kernels. Patch-mixer models are also fast at low arithmetic counts, while the
-ConvNeXt-like micro model is slower than several architectures with larger
-FLOP counts. The result is not direct energy evidence, but it helps explain why
-FLOPs alone should not be used to infer energy on this platform.
-
-\subsection{Synthetic Model Fidelity}
-
-The residualized WGAN-GP is evaluated only as a supplemental modeling tool.
-Table~\ref{tab:gan} summarizes the paper-aligned synthetic fidelity against
-the grounded Apple-only distribution. Energy and latency pass Kolmogorov--
-Smirnov checks at $p>0.05$, and the synthetic means preserve the measured
-energy ranking. The strongest claim is therefore limited: the synthetic model
-can reproduce the grounded distribution used to train it. It does not prove
-physical variance without independent repeated measurements.
+The expanded direct audit supports the same qualitative conclusion as the
+original five-model table. Across 17 architectures, latency explains nearly
+all measured energy variation ($R^2=0.9925$), while FLOPs is much weaker
+($R^2=0.4008$) and parameter count is weaker still ($R^2=0.0977$). The
+highest-energy group is not simply the highest-FLOP group: ConvNeXt-micro uses
+0.448 GFLOPs but consumes slightly more energy than the 3.414-GFLOP residual
+CNN medium because both run near 6.8 ms per inference. Inverted-residual-wide
+is the highest-energy architecture despite using less than one GFLOP. These
+counterexamples show why FLOPs alone is not a reliable deployment-energy proxy
+for this CPU backend.
 
 \begin{table}[t]
 \centering
-\caption{Supplemental GAN fidelity against grounded Apple-only data.}
-\label{tab:gan}
-\small
-\begin{tabular}{lrrr}
+\caption{Predictors of measured energy across the main evidence sources.}
+\label{tab:predictors}
+\begin{tabular}{lrr}
 \toprule
-Feature & Wasserstein & KS & $p$\\
+Dataset and predictor & $R^2$ & Pearson $r$ \\
 \midrule
-Energy & 0.0039 & 0.064 & 0.156\\
-Latency & 0.6934 & 0.067 & 0.120\\
-Derived power & 0.0457 & 0.047 & 0.498\\
+Original: latency & 0.99999 & 0.99999 \\
+Original: FLOPs & 0.00008 & -0.009 \\
+April M4 audit: latency & 0.980 & 0.990 \\
+April M4 audit: FLOPs & 0.001 & 0.034 \\
+M4 17-architecture: latency & 0.9925 & 0.9963 \\
+M4 17-architecture: FLOPs & 0.4008 & 0.6331 \\
+M4 17-architecture: params & 0.0977 & 0.3125 \\
+Retained M5 audit: latency & 0.975 & -- \\
+Retained M5 audit: FLOPs & 0.005 & -- \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Interpretation for Device Expansion}
+
+The original mean table, the earlier five-model M4 audit, the new
+17-architecture M4 audit, and the retained M5 summary are intentionally kept
+separate. The original table supports the earlier paper-aligned comparison;
+the new M4 audit supplies the strongest expanded direct-energy evidence with
+raw logs and repeated-window uncertainty; and the M5 result is retained as a
+cross-device audit summary from the prior HPEC artifact. Agreement between
+them is therefore evidence for robustness of the qualitative pattern, not
+identity of absolute energy values.
+
+This distinction matters for future device expansion. Apple Silicon CPU-only
+\texttt{powermetrics} data, Windows CPU data, and Windows GPU data should be
+reported as separate backend/device conditions. In particular, Windows GPU
+power logs from tools such as \texttt{nvidia-smi} are not directly equivalent
+to Apple package-power estimates. They can strengthen the paper if collected
+with matched model inputs, synchronization around GPU timing, raw power logs,
+and environment metadata, but they should not be merged into a single
+undifferentiated energy claim.
 
 \section{Discussion}
 
-The main practical conclusion is not that FLOPs are useless. FLOPs still
-describe arithmetic scale, and they are often useful for first-pass model
-screening. The conclusion is that FLOPs are insufficient as an energy proxy
-for a specific deployment stack. On Apple Silicon CPU-only PyTorch inference,
-latency captures backend effects that FLOPs miss: memory traffic, kernel
-selection, vectorization, depthwise-convolution efficiency, attention
-implementation, and cache behavior.
+The empirical pattern is consistent across the available Apple-Silicon energy
+sources: latency is a far stronger proxy for energy than FLOPs. This
+does not mean latency is a physical cause of energy by itself. Rather, under a
+fixed runtime and input shape, latency captures many implementation details
+that FLOPs misses: memory traffic, operator fusion, dispatch overhead,
+vectorization, cache behavior, and kernel availability.
 
-The architecture comparisons illustrate this. MobileNet-style depthwise
-convolutions reduce arithmetic, but on a general-purpose CPU they can become
-memory-bound. EfficientNet-B0 has fewer FLOPs than ResNet-18, but its compound
-scaling and operator mix produce longer latency. Tiny-ViT-5M has fewer FLOPs
-than ResNet-18 but pays for attention and projection operations that are less
-friendly to this CPU runtime. These effects are familiar in hardware-aware
-model design, but this benchmark shows their impact on measured energy in a
-small Apple-Silicon edge-inference case study.
+The largest counterexamples to FLOP-based reasoning now appear in the expanded
+M4 audit. ConvNeXt-micro has 7.6$\times$ fewer FLOPs than residual-CNN-medium
+but slightly higher measured energy because their latencies are almost the
+same. Inverted-residual-wide has 0.812 GFLOPs, far below the 3.414 GFLOPs of
+residual-CNN-medium, but it is the most energy-consuming architecture in the
+17-model table. FLOPs alone would therefore make the wrong deployment
+recommendation for this fixed CPU runtime.
 
-The synthetic GAN results should be interpreted cautiously. The residualized
-GAN reproduced measured means within a few percent in the repository workflow,
-but it was trained against grounded samples derived from measured means. This
-supports sensitivity analysis and artifact generation, not independent
-physical validation. HPEC-style benchmarking should prioritize direct power
-logs and only use synthetic trials as clearly labeled supplemental data.
-
-The results suggest three practical rules for edge-inference benchmarking.
-First, report latency next to energy even when energy is the headline metric,
-because latency captures much of the backend behavior that FLOPs hide. Second,
-do not compare architectures using FLOPs alone when the operator mix changes:
-depthwise convolutions, attention blocks, and compound-scaled CNNs can have
-very different CPU efficiency at similar arithmetic counts. Third, preserve
-enough raw measurement state for others to audit the result. A single summary
-table is hard to diagnose; raw power logs, window durations, inference counts,
-thread settings, and hardware metadata make the benchmark substantially more
-useful.
-
-For HPEC, the strongest aspect of the work is the benchmark artifact rather
-than the GAN. The raw audit logs, randomized model order, window counts, and
-environment JSON make the repeated energy audit inspectable. The GAN is still
-useful because it documents a failure mode: raw-scale multi-device training
-collapsed toward averages, while combo-normalized residual training preserved
-within-combination structure. That lesson is relevant for hardware-behavior
-modeling, where between-device variation can swamp the effect being studied.
-However, any deployment recommendation should be grounded in direct
-measurements.
-
-\section{Deployment Implications}
-
-For an embedded developer choosing between candidate networks, the benchmark
-supports a measurement-first workflow. FLOPs can narrow the design space, but a
-small deployment harness should then measure latency and power under the exact
-runtime that will ship. This is especially important when candidates use
-different operator families. A dense residual CNN, a depthwise CNN, and a
-Transformer-like vision model can present similar arithmetic budgets to a
-spreadsheet while exercising the CPU backend very differently.
-
-The result also affects how model-compression work should be reported. A
-compressed architecture with fewer FLOPs is not automatically a lower-energy
-architecture on a general-purpose CPU. If compression changes the operator mix
-toward kernels with poor vectorization or poor cache reuse, wall-clock time can
-increase enough to erase the arithmetic gain. Conversely, a model with more
-nominal arithmetic can be competitive if the runtime executes its kernels
-efficiently. This helps explain why ResNet-18 is not the highest-energy model
-in our five-model set despite having the most FLOPs.
-
-For HPEC-style systems papers, this suggests that benchmark artifacts should
-include the runtime controls that determine whether results are comparable:
-thread count, batch size, input shape, warmup policy, sampling interval,
-hardware identifier, software versions, and whether accelerators were enabled.
-Without those controls, energy comparisons can become statements about hidden
-runtime choices rather than about the architecture being evaluated.
-
-\subsection{External Embedded Reference Points}
-
-Table~\ref{tab:external} gives non-Apple reference points from public embedded
-benchmarks: Coral Edge TPU \cite{coralbench,coralfaq}, PyTorch Raspberry Pi
-\cite{pytorchrpi}, and STM32 AI Model Zoo \cite{stm32zoo}. These rows are not
-used in the Apple-Silicon regression and should not be read as direct
-measurements from our artifact.
-
-\begin{table}[t]
-\centering
-\caption{External embedded reference points. Energy is included only when it
-can be inferred from a reported latency and an explicit published power figure.}
-\label{tab:external}
-\scriptsize
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{L{0.20\linewidth}L{0.20\linewidth}rrL{0.13\linewidth}}
-\toprule
-Device & Model & Lat. & Energy & Evidence \\
- & & (ms) & (J) & \\
-\midrule
-Coral TPU & MNetV2 & 2.6 & 0.0052 & inferred\\
-R-Pi 4 & MNetV2 & 26.4 & -- & latency\\
-R-Pi 4 & RN-18 & 100.3 & -- & latency\\
-STM32H747I & MNetV2 & 1118.27 & -- & latency\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The contrast is useful but limited. Coral's inferred energy uses a published
-2 W Edge TPU figure and benchmark latency, while the Raspberry Pi and STM32
-rows are latency-only. They therefore strengthen the motivation for
-hardware-specific measurement but do not replace our direct Apple-Silicon
-power logs.
-
-\section{Difference From FTC Version}
-
-A shorter FTC version of this work focused on the initial Apple-Silicon
-five-model comparison and the broad warning that FLOPs can mislead as an
-energy proxy. This HPEC version adds a systems-oriented artifact contribution:
-three direct 50-window \texttt{powermetrics} audits on Apple M1, M4 Pro, and
-M5 Pro; raw power logs and per-window inference counts; explicit environment
-metadata; consistency checks tying the manuscript to repository CSVs; and a
-cleaner cross-chip comparison figure. The HPEC submission therefore emphasizes
-reproducible measurement methodology and hardware-dependent benchmarking
-rather than only the original model-ranking observation.
+The M4 audits are also valuable because they add uncertainty information absent
+from the original table. High-power windows are retained rather than removed,
+and each table entry links back to raw text logs. This makes the evidence more
+auditable and prevents synthetic data from being confused with physical
+measurement.
 
 \section{Limitations}
 
-The study is intentionally narrow. It covers five architectures, one input
-shape, batch size 1, and CPU-only PyTorch inference. It does not evaluate
-Apple Neural Engine, Metal Performance Shaders, GPUs, quantization, or
-accuracy-normalized energy. The original five-model mean table lacks raw
-power logs; the repository adds later direct audits with raw logs, but those
-audits are not the original source run. Finally, 1 Hz power sampling is coarse
-relative to per-inference latency, so energy is attributed over windows rather
-than instantaneous inference events.
+The new audit improves the main scope limitation by collecting direct energy
+for all 17 architecture variants, but it remains one Apple M4 Pro CPU-only
+condition. It does not yet cover additional batch sizes, input shapes,
+quantized deployment paths, Metal Performance Shaders, Apple Neural Engine, or
+GPU execution. Those conditions require separate matched runs rather than
+being mixed into the current CPU table. The \texttt{powermetrics} sampling
+interval is also coarse relative to per-inference latency, so energy is
+attributed at the window level rather than at the level of one forward pass.
 
-There are also statistical limits. The main predictor analysis has only five
-architectures, so exact $R^2$ values should be read as descriptive statistics
-for this benchmark rather than universal constants. We include leave-one-out
-checks, rank checks, and separate audits, but a stronger HPEC version would
-add more direct-energy architectures, hardware backends, and batch sizes. The
-current result is best viewed as a reproducible case study showing why FLOP
-counts can mislead under one realistic edge-inference stack.
-
-\section{Artifact Availability}
-
-\begin{sloppypar}
-The repository includes source code, tables, scripts, raw audit logs, and
-metadata at
-\url{https://github.com/jubs-2431/which-neural-networks-waste-the-most-energy}.
-Key artifacts are the Apple benchmark CSV, the M1, M4 Pro, and M5 Pro
-energy-summary CSVs, raw
-\texttt{powermetrics} logs, the measurement script, and the measurement
-protocol.
-\end{sloppypar}
-
-The intended reproduction path is lightweight. The existing CSV artifacts can
-be inspected without rerunning privileged power measurement. Repeating the
-direct energy audit on macOS requires \texttt{powermetrics}, which asks for
-administrator privileges, and writes a new set of window-level logs. The
-expanded latency sweep can be rerun without privileged access and provides a
-sanity check that the CPU-only runtime and thread settings are configured as
-expected. The paper source and compiled HPEC draft are included so that the
-tables in this submission can be traced directly back to repository artifacts.
+The study is CPU-only on Apple Silicon. It does not evaluate Metal, ANE,
+CUDA, or vendor-specific GPU inference backends. Those backends are important,
+but they require separate timing synchronization and power logging protocols.
+The local rebuild does not include a raw M5 Pro artifact directory, so the M5
+entry is reported only as a retained prior HPEC audit summary. Finally, the
+residualized WGAN-GP is evaluated against grounded training
+means and should be interpreted as a supplemental modeling tool, not as proof
+of physical repeated-trial variance.
 
 \section{Conclusion}
 
-In this Apple-Silicon CPU-only inference benchmark, measured energy tracks
-latency far more closely than FLOPs. The result is visible in the
-paper-aligned five-model mean table and in later 50-window direct energy
-audits from one Apple M1 run, one Apple M4 Pro run, and one Apple M5 Pro run.
-For edge-AI and embedded deployments, the engineering lesson is direct:
-benchmark the deployed runtime with auditable power traces, and treat FLOPs as
-an incomplete proxy rather than an energy measurement.
+On Apple Silicon under CPU-only PyTorch inference, per-inference energy cannot
+be reduced to FLOPs or parameter count. In the original five-model mean table,
+latency tracks energy at $R^2=0.99999$, while FLOPs explains almost none of
+the measured variation. The new 17-architecture Apple M4 Pro
+\texttt{powermetrics} audit strengthens that result with broader direct energy
+coverage: latency reaches $R^2=0.9925$, while FLOPs reaches only
+$R^2=0.4008$. For embedded and edge inference, this supports a practical
+measurement standard: report latency and auditable power traces under the
+deployment runtime instead of relying on FLOP counts alone.
 
-\begin{thebibliography}{16}
+\section*{Artifact Availability}
+
+The artifact directory contains the original benchmark CSVs, the
+\texttt{measured\_energy\_powermetrics} and
+\texttt{measured\_energy\_powermetrics\_m4pro\_arch17\_cpu} directories with raw
+\texttt{powermetrics} logs, per-window trial CSVs, summary CSVs, environment
+metadata, measurement scripts, and the supplemental residualized GAN workflow.
+The retained M5 Pro summary should be paired with its raw artifact directory
+before final camera-ready archival.
+
+\begin{thebibliography}{00}
 
 \bibitem{horowitz2014}
-M.~Horowitz, ``Computing's energy problem (and what we can do about it),''
-\emph{IEEE Micro}, vol.~34, no.~5, pp.~10--14, 2014.
+M. Horowitz, ``Computing's energy problem (and what we can do about it),''
+in \emph{IEEE International Solid-State Circuits Conference Digest of
+Technical Papers}, 2014.
 
-\bibitem{eyeriss2017}
+\bibitem{eyeriss2016}
 Y.-H. Chen et al., ``Eyeriss: An energy-efficient reconfigurable accelerator
-for deep convolutional neural networks,'' \emph{IEEE J. Solid-State Circuits},
-2017.
+for deep convolutional neural networks,'' \emph{IEEE Journal of Solid-State
+Circuits}, vol. 52, no. 1, pp. 127--138, 2016.
 
-\bibitem{hardwareaware2019}
-Y.~He et al., ``Understanding FLOPs is not enough: A study of hardware-aware
-neural networks,'' \emph{arXiv preprint arXiv:1912.01090}, 2019.
+\bibitem{mobilenetv3}
+A. Howard et al., ``Searching for MobileNetV3,'' in \emph{Proc. IEEE/CVF
+International Conference on Computer Vision}, 2019.
 
-\bibitem{mobilenet2017}
-A.~G. Howard et al., ``MobileNets: Efficient convolutional neural networks for
-mobile vision applications,'' \emph{arXiv preprint arXiv:1704.04861}, 2017.
+\bibitem{mobilenet}
+A. G. Howard et al., ``MobileNets: Efficient convolutional neural networks
+for mobile vision applications,'' arXiv:1704.04861, 2017.
 
-\bibitem{mobilenetv22018}
-M.~Sandler, A.~Howard, M.~Zhu, A.~Zhmoginov, and L.-C. Chen,
-``MobileNetV2: Inverted residuals and linear bottlenecks,'' in
-\emph{Proc. IEEE Conf. Computer Vision and Pattern Recognition}, 2018.
+\bibitem{mobilenetv2}
+M. Sandler et al., ``MobileNetV2: Inverted residuals and linear
+bottlenecks,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and
+Pattern Recognition}, 2018.
 
-\bibitem{mobilenetv32019}
-A.~Howard et al., ``Searching for MobileNetV3,'' in
-\emph{Proc. IEEE Int. Conf. Computer Vision}, 2019.
+\bibitem{efficientnet}
+M. Tan and Q. Le, ``EfficientNet: Rethinking model scaling for convolutional
+neural networks,'' in \emph{Proc. International Conference on Machine
+Learning}, 2019.
 
-\bibitem{efficientnet2019}
-M.~Tan and Q.~Le, ``EfficientNet: Rethinking model scaling for convolutional
-neural networks,'' in \emph{Proc. Int. Conf. Machine Learning}, 2019.
+\bibitem{squeezenet}
+F. N. Iandola et al., ``SqueezeNet: AlexNet-level accuracy with 50x fewer
+parameters and $<$0.5MB model size,'' arXiv:1602.07360, 2016.
 
-\bibitem{squeezenet2016}
-F.~N. Iandola et al., ``SqueezeNet: AlexNet-level accuracy with 50x fewer
-parameters and $<$0.5MB model size,'' \emph{arXiv:1602.07360}, 2016.
+\bibitem{shufflenet}
+X. Zhang et al., ``ShuffleNet: An extremely efficient convolutional neural
+network for mobile devices,'' in \emph{Proc. IEEE/CVF Conference on Computer
+Vision and Pattern Recognition}, 2018.
 
-\bibitem{shufflenet2018}
-X.~Zhang et al., ``ShuffleNet: An extremely efficient convolutional neural
-network for mobile devices,'' in \emph{Proc. IEEE CVPR}, 2018.
+\bibitem{greenai}
+R. Schwartz et al., ``Green AI,'' \emph{Communications of the ACM}, vol. 63,
+no. 12, pp. 54--63, 2020.
 
-\bibitem{mnasnet2019}
-M.~Tan et al., ``MnasNet: Platform-aware neural architecture search for
-mobile,'' in \emph{Proc. IEEE CVPR}, 2019.
-
-\bibitem{fbnet2019}
-B.~Wu et al., ``FBNet: Hardware-aware efficient ConvNet design via
-differentiable neural architecture search,'' in \emph{Proc. IEEE CVPR}, 2019.
-
-\bibitem{greenai2020}
-R.~Schwartz et al., ``Green AI,'' \emph{Communications of the ACM}, vol.~63,
-no.~12, pp.~54--63, 2020.
-
-\bibitem{strubell2019}
-E.~Strubell, A.~Ganesh, and A.~McCallum, ``Energy and policy considerations
-for deep learning in NLP,'' in \emph{Proc. ACL}, 2019.
-
-\bibitem{patterson2021}
-D.~Patterson et al., ``Carbon emissions and large neural network training,''
-\emph{arXiv:2104.10350}, 2021.
-
-\bibitem{mlperf2020}
-V.~J. Reddi et al., ``MLPerf inference benchmark,'' in \emph{Proc. ACM/IEEE
-ISCA}, 2020.
-
-\bibitem{coralbench}
-Google Coral, ``Edge TPU performance benchmarks,'' accessed May 2026.
-
-\bibitem{coralfaq}
-Google Coral, ``Frequently asked questions,'' accessed May 2026.
-
-\bibitem{pytorchrpi}
-PyTorch, ``Real time inference on Raspberry Pi,'' accessed May 2026.
-
-\bibitem{stm32zoo}
-STMicroelectronics, ``STM32 AI model zoo: MobileNetV2,'' accessed May 2026.
+\bibitem{carbontracker}
+L. F. W. Anthony, B. Kanding, and R. Selvan, ``Carbontracker: Tracking and
+predicting the carbon footprint of training deep learning models,'' in
+\emph{ICML Workshop on Challenges in Deploying and Monitoring Machine
+Learning Systems}, 2020.
 
 \bibitem{wgangp2017}
-I.~Gulrajani et al., ``Improved training of Wasserstein GANs,'' in
+I. Gulrajani et al., ``Improved training of Wasserstein GANs,'' in
 \emph{Advances in Neural Information Processing Systems}, 2017.
 
 \end{thebibliography}
