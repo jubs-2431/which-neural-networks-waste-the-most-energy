@@ -27,12 +27,16 @@ Apple-Silicon CPU-only PyTorch comparison, then add a new direct
 \texttt{powermetrics} audit over 17 architecture variants on an Apple M4 Pro.
 The new audit contains 170 measured windows, 30 seconds per window, raw power
 logs, per-window inference counts, confidence intervals, and full environment
-metadata. Across the 17 directly measured architectures, latency explains
+metadata. Three follow-up audits then test the result under MPS/Metal
+execution, CPU batch size 4, and a smaller $128\times128$ CPU input. Across
+the 17 directly measured CPU batch-1 architectures, latency explains
 nearly all between-architecture energy variation ($R^2=0.9925$), while FLOPs
 is much weaker ($R^2=0.4008$) and parameter count is weaker still
 ($R^2=0.0977$). The expanded data preserve the central five-model result:
 runtime behavior, not nominal arithmetic count, determines energy ordering
-under this fixed CPU backend. For example, ConvNeXt-micro has only 0.448
+under this fixed CPU backend, and the sensitivity checks show which parts of
+the ranking persist when the backend, batch size, or input size changes. For
+example, ConvNeXt-micro has only 0.448
 GFLOPs but consumes slightly more energy than a 3.414-GFLOP residual CNN
 because both run at roughly the same latency. A residualized conditional
 WGAN-GP is retained only as supplemental sparse-trial modeling. The results
@@ -71,6 +75,9 @@ The contributions are:
     \item A new 17-architecture Apple M4 Pro direct-energy audit with 170
     \texttt{powermetrics} windows, raw logs, per-window inference counts,
     confidence intervals, and environment metadata.
+    \item Three targeted follow-up audits for limitations: MPS/Metal backend
+    comparison, CPU batch-size sensitivity at batch 4, and CPU input-size
+    sensitivity at $128\times128$.
     \item A compact analysis showing that latency is a much stronger predictor
     of energy than FLOPs in both the original five-model table and the
     expanded 17-architecture direct-energy table.
@@ -123,6 +130,16 @@ text logs, per-window inference counts, per-window energy estimates, summary
 statistics, confidence intervals, and a JSON environment record. Earlier
 five-model M4 and retained M5 summaries are treated as supporting audits, not
 merged with the new 17-architecture table.
+
+After the main audit, three shorter follow-up audits were collected on the
+same M4 Pro environment to address backend and input-scope limitations. The
+first repeats the 17-architecture suite with PyTorch MPS/Metal at batch size 1
+and $224\times224$ input. The second repeats the CPU suite at batch size 4 and
+$224\times224$ input. The third repeats the CPU suite at $128\times128$ input
+for 15 architectures; the two patch-mixer variants are excluded from this
+input-size check because their token MLPs are shape-fixed to the $224\times224$
+registry definition. These follow-up audits use five 20-second windows per
+architecture and are reported separately from the main CPU batch-1 table.
 
 \begin{table*}[t]
 \centering
@@ -288,20 +305,65 @@ April M4 audit: FLOPs & 0.001 & 0.034 \\
 M4 17-architecture: latency & 0.9925 & 0.9963 \\
 M4 17-architecture: FLOPs & 0.4008 & 0.6331 \\
 M4 17-architecture: params & 0.0977 & 0.3125 \\
+M4 MPS batch 1: latency & 0.6236 & 0.7897 \\
+M4 MPS batch 1: FLOPs & 0.7892 & 0.8884 \\
+M4 CPU batch 4: latency & 0.9914 & 0.9957 \\
+M4 CPU batch 4: FLOPs & 0.4397 & 0.6631 \\
+M4 CPU $128^2$: latency & 0.9986 & 0.9993 \\
+M4 CPU $128^2$: FLOPs & 0.1784 & 0.4223 \\
 Retained M5 audit: latency & 0.975 & -- \\
 Retained M5 audit: FLOPs & 0.005 & -- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\subsection{Backend, Batch, and Input-Size Checks}
+
+Table~\ref{tab:sensitivity} summarizes the three targeted follow-up audits.
+The CPU batch-size and input-size checks preserve the central predictor
+result: latency remains above $R^2=0.99$, while FLOPs remains much weaker. The
+CPU batch-4 ranking is also very close to the main CPU batch-1 ranking
+(Spearman $\rho=0.990$ over 17 shared architectures), and the $128\times128$
+CPU ranking remains close over the 15 shared architectures
+(Spearman $\rho=0.993$).
+
+MPS/Metal changes the picture. It is much faster and lower-energy for most
+larger convolutional and residual architectures, but not for the smallest
+models where dispatch overhead dominates. The MPS energy ranking is still
+related to the CPU ranking (Spearman $\rho=0.914$), but FLOPs becomes the
+stronger single predictor in this short backend audit ($R^2=0.7892$ for FLOPs
+versus $R^2=0.6236$ for latency). This reinforces the main methodological
+point: direct backend-specific measurement is required, because one runtime's
+proxy relationship should not be assumed to transfer unchanged to another
+runtime.
+
+\begin{table*}[t]
+\centering
+\caption{Targeted M4 Pro follow-up audits. No measured windows are filtered or winsorized.}
+\label{tab:sensitivity}
+\begin{tabular}{lrrrrrr}
+\toprule
+Audit & Models & Windows & Lat. $R^2$ & FLOPs $R^2$ & Energy-rank $\rho$ & Largest retained window \\
+\midrule
+CPU batch 1, $224^2$ & 17 & 170 & 0.9925 & 0.4008 & 1.000 & inverted\_residual\_wide, 0.0865 J \\
+MPS batch 1, $224^2$ & 17 & 85 & 0.6236 & 0.7892 & 0.914 & residual\_cnn\_medium, 0.0273 J \\
+CPU batch 4, $224^2$ & 17 & 85 & 0.9914 & 0.4397 & 0.990 & residual\_cnn\_medium, 0.2685 J \\
+CPU batch 1, $128^2$ & 15 & 75 & 0.9986 & 0.1784 & 0.993 & inverted\_residual\_wide, 0.0243 J \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \subsection{Interpretation for Device Expansion}
 
 The original mean table, the earlier five-model M4 audit, the new
-17-architecture M4 audit, and the retained M5 summary are intentionally kept
+17-architecture M4 audit, the three M4 follow-up audits, and the retained M5
+summary are intentionally kept
 separate. The original table supports the earlier paper-aligned comparison;
 the new M4 audit supplies the strongest expanded direct-energy evidence with
-raw logs and repeated-window uncertainty; and the M5 result is retained as a
-cross-device audit summary from the prior HPEC artifact. Agreement between
+raw logs and repeated-window uncertainty; the follow-up audits test whether
+the main pattern survives backend, batch-size, and input-size changes; and the
+M5 result is retained as a cross-device audit summary from the prior HPEC
+artifact. Agreement between
 them is therefore evidence for robustness of the qualitative pattern, not
 identity of absolute energy values.
 
@@ -340,20 +402,22 @@ measurement.
 \section{Limitations}
 
 The new audit improves the main scope limitation by collecting direct energy
-for all 17 architecture variants, but it remains one Apple M4 Pro CPU-only
-condition. It does not yet cover additional batch sizes, input shapes,
-quantized deployment paths, Metal Performance Shaders, Apple Neural Engine, or
-GPU execution. Those conditions require separate matched runs rather than
-being mixed into the current CPU table. The \texttt{powermetrics} sampling
-interval is also coarse relative to per-inference latency, so energy is
-attributed at the window level rather than at the level of one forward pass.
+for all 17 architecture variants and adding targeted MPS/Metal, batch-size,
+and input-size checks. However, the main result remains a local Apple M4 Pro
+study, and the follow-up audits are shorter than the primary 170-window CPU
+batch-1 audit. The $128\times128$ input-size check also covers 15
+architectures rather than all 17 because the patch-mixer registry entries are
+shape-fixed.
 
-The study is CPU-only on Apple Silicon. It does not evaluate Metal, ANE,
-CUDA, or vendor-specific GPU inference backends. Those backends are important,
-but they require separate timing synchronization and power logging protocols.
-The local rebuild does not include a raw M5 Pro artifact directory, so the M5
-entry is reported only as a retained prior HPEC audit summary. Finally, the
-residualized WGAN-GP is evaluated against grounded training
+The paper still does not evaluate Apple Neural Engine, quantized deployment
+paths, CUDA, or other vendor-specific GPU inference backends. Those conditions
+require separate timing synchronization and power logging protocols. The
+\texttt{powermetrics} sampling interval is also coarse relative to
+per-inference latency, so energy is attributed at the window level rather than
+at the level of one forward pass. The local rebuild does not include a raw M5
+Pro artifact directory, so the M5 entry is reported only as a retained prior
+HPEC audit summary. Finally, the residualized WGAN-GP is evaluated against
+grounded training
 means and should be interpreted as a supplemental modeling tool, not as proof
 of physical repeated-trial variance.
 
@@ -376,6 +440,8 @@ The artifact directory contains the original benchmark CSVs, the
 \texttt{measured\_energy\_powermetrics\_m4pro\_arch17\_cpu} directories with raw
 \texttt{powermetrics} logs, per-window trial CSVs, summary CSVs, environment
 metadata, measurement scripts, and the supplemental residualized GAN workflow.
+The follow-up MPS-b1-224, CPU-b4-224, and CPU-b1-128-at-128px directories
+provide the backend, batch-size, and input-size checks.
 The retained M5 Pro summary should be paired with its raw artifact directory
 before final camera-ready archival.
 

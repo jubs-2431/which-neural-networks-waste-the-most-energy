@@ -168,9 +168,11 @@ This script prompts for `sudo` because macOS requires superuser privileges for
 - `measured_energy_powermetrics/raw_powermetrics/`: raw text logs, one file per
   model/window.
 
-The script uses CPU-only float32 inference, randomized model order across
+The main audit uses CPU-only float32 inference, randomized model order across
 repeats, a fixed input shape of `1 x 3 x 224 x 224`, and
-`powermetrics --samplers cpu_power,gpu_power,ane_power`.
+`powermetrics --samplers cpu_power,gpu_power,ane_power`. The follow-up audits
+change exactly one deployment condition at a time: MPS/Metal backend, CPU batch
+size 4, or CPU input size `1 x 3 x 128 x 128`.
 
 The included audit used 10 windows per model, 20 seconds per window, 20
 `powermetrics` samples per window at 1 Hz, 10 warm-up inferences before each
@@ -182,4 +184,7 @@ raw windows behind `paper_apple_silicon_benchmark.csv`.
 
 Outlier policy: no measured windows are filtered or winsorized. High-power
 windows remain in raw logs, trial CSVs, summary statistics, confidence
-intervals, and paper analysis.
+intervals, and paper analysis. In the collected follow-up audits, the largest
+retained windows are residual-CNN-medium at 0.0273 J in the MPS audit,
+residual-CNN-medium at 0.2685 J in the CPU batch-4 audit, and
+inverted-residual-wide at 0.0243 J in the CPU 128x128 audit.

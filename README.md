@@ -26,6 +26,9 @@ the IEEE HPEC 2026 draft:
 - `measured_architecture_benchmark.csv`: 17-architecture latency sweep.
 - `measured_architecture_trials.csv`: raw latency sweep trials.
 - `measured_energy_powermetrics_m4pro_arch17_cpu/`: direct M4 Pro 17-architecture CPU energy audit.
+- `measured_energy_powermetrics_m4pro_arch17_mps_b1_224/`: M4 Pro MPS/Metal follow-up audit.
+- `measured_energy_powermetrics_m4pro_arch17_cpu_b4_224/`: M4 Pro CPU batch-size follow-up at batch 4.
+- `measured_energy_powermetrics_m4pro_arch15_cpu_b1_128/`: M4 Pro CPU input-size follow-up at 128x128.
 - `paper_supplemental_metrics.csv`: paper support table.
 
 The paper now uses the M4 Pro 17-architecture `powermetrics` audit as the main
@@ -157,6 +160,17 @@ Across the 17 direct-energy rows:
 - Latency predicts measured energy with `R^2 = 0.9925`.
 - FLOPs reaches only `R^2 = 0.4008`.
 - Parameter count reaches only `R^2 = 0.0977`.
+
+Targeted follow-up audits are stored separately from the main CPU batch-1
+table:
+
+- MPS/Metal batch 1, 224x224: latency `R^2 = 0.6236`, FLOPs `R^2 = 0.7892`,
+  energy-rank Spearman correlation versus CPU batch 1 `rho = 0.914`.
+- CPU batch 4, 224x224: latency `R^2 = 0.9914`, FLOPs `R^2 = 0.4397`,
+  energy-rank Spearman correlation versus CPU batch 1 `rho = 0.990`.
+- CPU batch 1, 128x128 over 15 shape-compatible architectures: latency
+  `R^2 = 0.9986`, FLOPs `R^2 = 0.1784`, energy-rank Spearman correlation
+  versus CPU batch 1 `rho = 0.993`.
 
 The `energy_proxy_J_constant_power` and `edp_proxy_J_s_constant_power` columns
 in `measured_architecture_benchmark.csv` remain constant-power proxy fields.
